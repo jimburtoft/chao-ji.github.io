@@ -85,7 +85,10 @@
 
 <p>Now we wish to describe each observation by a single attribute. In other words, the <script type="math/tex">n \times d</script> matrix <script type="math/tex">X</script> will be turned into a <script type="math/tex">n \times 1</script> column matrix (i.e. vector), and we want the variance of the sample composed of the <script type="math/tex">n</script> elements from this vector to be as large as possible.</p>
 
-<p align="center"><img src="/assets/projection.pdf" width="400" /><br />Project points from 2-D space to 1-D space</p>
+<p align="center">
+  <img src="/assets/projection.png" width="400" />
+  <br />Project points from 2-D space to 1-D space
+</p>
 
 <p>One way to do this (in the case of PCA) is to project the collection of <script type="math/tex">n</script> points in <script type="math/tex">d</script>-dimensional space into 1-dimensional space, or equivalently right-multiply <script type="math/tex">\mathbf{X}</script> with a column vector <script type="math/tex">\alpha</script></p>
 
@@ -265,8 +268,9 @@ According to <strong>Theorem 2</strong>, we know that the eigenvalues are non-ne
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">'1st Principal Component'</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">'2nd Principal Component'</span><span class="p">)</span>
 </code></pre></div></div>
+
 <p align="center">
-<img src="/assets/pca.pdf" width="1200" />
+<img src="/assets/pca.png" width="1200" />
 <br />
 Left: Original, uncentered. Middle: Centered. Right: PCA-transformed
 </p>
