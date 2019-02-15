@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>SVD Explained | SuperComputer’s Blog</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="SVD Explained" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In the previous post we talked about Principlal Component Analysis, a popular statistical technique for dimensionality reduction and feature decorrelation. Another common use case is matrix decomposition, where a matrix is factorized into a product of matrices (Eigendecomposition)." />
+<meta property="og:description" content="In the previous post we talked about Principlal Component Analysis, a popular statistical technique for dimensionality reduction and feature decorrelation. Another common use case is matrix decomposition, where a matrix is factorized into a product of matrices (Eigendecomposition)." />
+<link rel="canonical" href="http://localhost:4000/jekyll/update/2016/03/10/SVD.html" />
+<meta property="og:url" content="http://localhost:4000/jekyll/update/2016/03/10/SVD.html" />
+<meta property="og:site_name" content="SuperComputer’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2016-03-10T23:42:01+08:00" />
+<script type="application/ld+json">
+{"description":"In the previous post we talked about Principlal Component Analysis, a popular statistical technique for dimensionality reduction and feature decorrelation. Another common use case is matrix decomposition, where a matrix is factorized into a product of matrices (Eigendecomposition).","@type":"BlogPosting","url":"http://localhost:4000/jekyll/update/2016/03/10/SVD.html","headline":"SVD Explained","dateModified":"2016-03-10T23:42:01+08:00","datePublished":"2016-03-10T23:42:01+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/jekyll/update/2016/03/10/SVD.html"},"@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="SuperComputer's Blog" /></head>
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">SuperComputer&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">SVD Explained</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2016-03-10T23:42:01+08:00" itemprop="datePublished">Mar 10, 2016
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>In the previous post we talked about <strong>Principlal Component Analysis</strong>, a popular statistical technique for dimensionality reduction and feature decorrelation. Another common use case is matrix decomposition, where a matrix is factorized into a product of matrices (Eigendecomposition).</p>
+
+<p>A limitation of Eigendecomposition is that it only works on <em>square</em> matrices. <strong>Singular Value Decomposition</strong> (SVD) is a generalization of Eigendecomposition, which works on any rectangle-shaped matrix. It has been widely used in Machine Learning applications such as <a href="https://en.wikipedia.org/wiki/Latent_semantic_analysis">Latent Semantic Analysis</a> (LSA), where a document-word matrix is decomposed and re-represented while keeping the pattern in the original matrix, and image compression, where a matrix holding the pixel intensities is decomposed and re-represented as the product of three much smaller matrices, from which the original image can be reconstructed.</p>
+
+<p>In this post, I’ll explain mathematically why a Singular Value Decomposition always exists for any rectangle-shaped matrix, and how to find it. It is assumed that you have some basic grasp of Linear Algebra (I recommend you to read the post on PCA).</p>
+
+<h2 id="the-math">The Math</h2>
+
+<p>Let <script type="math/tex">A</script> be any <script type="math/tex">m \times n</script> real-valued matrix where <script type="math/tex">m \le n</script>. It can be shown that the <script type="math/tex">m \times m</script> matrix <script type="math/tex">AA^{T}</script> is</p>
+<ol>
+  <li>symmetric</li>
+  <li>positive semidefinite</li>
+</ol>
+
+<p>Let <script type="math/tex">\lambda_{1}, \lambda_{2}, \cdots, \lambda_{m}</script> be the <script type="math/tex">m</script> eigenvalues of <script type="math/tex">AA^{T}</script>, and <script type="math/tex">u_{1}, u_{2}, \cdots, u_{m}</script> be the eigenvectors (column vectors of shape <script type="math/tex">m \times 1</script>) corresponding to <script type="math/tex">\lambda_{1}, \lambda_{2}, \cdots, \lambda_{m}</script>, respectively. It follows that</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+AA^{T}u_{1} &= \lambda_{1} u_{1} \\
+AA^{T}u_{2} &= \lambda_{2} u_{2} \\
+&\cdots \\
+AA^{T}u_{m} & = \lambda_{m} u_{m} \\
+\end{align} %]]></script>
+
+<p>and</p>
+
+<ul>
+  <li>The eigenvalues are non-negative: <script type="math/tex">\lambda_{1} \ge 0, \lambda_{2} \ge 0, \cdots, \lambda_{m} \ge 0</script>.</li>
+  <li>The eigenvectors (corresponding to different eigenvalues) are pairwise orthogonal: <script type="math/tex">u_{i}^{T}u_{j} = 0</script> for <script type="math/tex">i \ne j</script> and <script type="math/tex">i, j = 1, \cdots, m</script>.</li>
+</ul>
+
+<p>We’ll further assume that <script type="math/tex">u_{1}, u_{2}, \cdots, u_{m}</script> are unit vectors:</p>
+
+<p><script type="math/tex">u_{i}^{T}u_{i} = 1</script> for <script type="math/tex">i = 1, \cdots, m</script>.</p>
+
+<p> </p>
+
+<p>Let’s define another <script type="math/tex">m</script> column vectors <script type="math/tex">v_{i}</script> (of shape <script type="math/tex">n \times 1</script>):</p>
+
+<p><script type="math/tex">v_{i} = \frac{1}{\sqrt{\lambda_{i}}} A^{T}u_{i}</script> for <script type="math/tex">i = 1, \cdots, m</script></p>
+
+<p>We can show that</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+A^{T}Av_{i} & = A^{T}A \frac{1}{\sqrt{\lambda_{i}}} A^{T} u_{i} = \frac{1}{\sqrt{\lambda_{i}}} A^{T} A A^{T} u_{i} \\ 
+            &= \frac{1}{\sqrt{\lambda_{i}}} A^{T} \lambda_{i} u_{i} = \sqrt{\lambda_{i}} A^{T} u_{i} = \sqrt{\lambda_{i}} \sqrt{\lambda_{i}} v_{i} = \lambda_{i} v_{i}
+\end{align} %]]></script>
+
+<p>In other words, <script type="math/tex">\lambda_{i}</script>’s are also eigenvalues of the <script type="math/tex">n \times n</script> of matrix <script type="math/tex">A^{T}A</script>, and <script type="math/tex">v_{i}</script>’s are the eigenvectors corresponding to <script type="math/tex">\lambda_{i}</script>, for <script type="math/tex">i = 1, \cdots, m</script></p>
+
+<p>and <script type="math/tex">v_{i}</script>’s are unit vectors too:</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+v_{i}^{T}v_{i} & = \frac{1}{\sqrt{\lambda_{i}}} u_{i}^{T} A \cdot \frac{1}{\sqrt{\lambda_{i}}} A^{T}u_{i} \\
+               & = \frac{1}{\lambda_{i}} u_{i}^{T} A A^{T} u_{i} = \frac{1}{\lambda_{i}} u_{i}^{T} \lambda_{i} u_{i} = u_{i}^{T} u_{i} = 1
+\end{align} %]]></script>
+
+<p>Note that <script type="math/tex">A^{T} A</script> is a <script type="math/tex">n \times n</script> matrix and <script type="math/tex">n \ge m</script>, so it might have additional eigenvalues <script type="math/tex">\lambda_{m + 1}, \lambda_{m + 2}, \cdots, \lambda_{n}</script>, with the corresponding eigenvectors <script type="math/tex">v_{m+1}, v_{m+2}, \cdots, v_{n}</script>, respectively. Because the eigenvectors <script type="math/tex">v_{1}, v_{2}, \cdots, v_{m}, v_{m+1}, \cdots, v_{n}</script> correspond to different eigenvalues, they must be pairwise orthogonal:</p>
+
+<p><script type="math/tex">v_{i}^{T}v_{j} = 0</script> for <script type="math/tex">i \ne j</script> and <script type="math/tex">i, j = 1, \cdots, n</script></p>
+
+<p> </p>
+
+<p> </p>
+
+<p>Finally, let’s put together the two groups of eigenvectors into a <script type="math/tex">m \times m</script> matrix <script type="math/tex">U</script> and a <script type="math/tex">n \times n</script> matrix <script type="math/tex">V</script>, where</p>
+
+<script type="math/tex; mode=display">U = \begin{bmatrix}u_{1}^{T}\\u_{2}^{T} \\ \vdots \\ u_{m}^{T}\end{bmatrix}</script>
+
+<p>and</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+V = \begin{bmatrix} v_{1} & v_{2} & \cdots & v_{m} & v_{m+1} & \cdots& v_{n} \end{bmatrix} %]]></script>
+
+<p>Note that both <script type="math/tex">U</script> and <script type="math/tex">V</script> are inversible because their rows/columns are pairwise orthogonal (hence linearly independent).</p>
+
+<p>Let’s compute the product of three matrices <script type="math/tex">U</script>, <script type="math/tex">A</script> and <script type="math/tex">V</script>:</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+U A V & = \begin{bmatrix}u_{1}^{T}\\u_{2}^{T} \\ \vdots \\ u_{m}^{T}\end{bmatrix} \cdot A \cdot \begin{bmatrix} v_{1} & v_{2} & \cdots & v_{m} & v_{m+1} & \cdots& v_{n} \end{bmatrix} \\
+  & = \begin{bmatrix} u_{1}^{T}A \\ u_{2}^{T}A \\ \vdots \\ u_{m}^{T}A\end{bmatrix} \cdot \begin{bmatrix}v_{1} & v_{2} & \cdots & v_{m} & v_{m + 1} & \cdots & v_{n} \end{bmatrix} \\
+ & = \begin{bmatrix}
+  u_{1}^{T}Av_{1} & u_{1}^{T}Av_{2} & \cdots & u_{1}^{T}Av_{m} & u_{1}^{T}Av_{m+1} & \cdots & u_{1}^{T}Av_{n} \\
+  u_{2}^{T}Av_{1} & u_{2}^{T}Av_{2} & \cdots & u_{2}^{T}Av_{m} & u_{2}^{T}Av_{m+1} & \cdots & u_{2}^{T}Av_{n} \\
+  \vdots & \vdots & & \vdots & \vdots & & \vdots \\
+  u_{m}^{T}Av_{1} & u_{m}^{T}Av_{2} & \cdots & u_{m}^{T}Av_{m} & u_{m}^{T}Av_{m+1} & \cdots & u_{m}^{T}Av_{n} 
+  \end{bmatrix} 
+\end{align} %]]></script>
+
+<p>Remember that we defined <script type="math/tex">v_{i} = \frac{1}{\sqrt{\lambda_{i}}} A^{T}u_{i}</script>, where <script type="math/tex">i = 1, \cdots, m</script>.</p>
+
+<p>It follows that <script type="math/tex">u_{i}^{T} A = \sqrt{\lambda_{i}} v_{i}^{T}</script> for <script type="math/tex">i = 1, \cdots, m</script></p>
+
+<p>Therefore for <script type="math/tex">i = 1, \cdots, m</script> and <script type="math/tex">j = 1, \cdots, n</script>,</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+u_{i}^{T} A v_{j} = \sqrt{\lambda_{i}} v_{i}^{T} v_{j} = \begin{cases}
+  \sqrt{\lambda_{i}}, & 1 \le i = j \le m \\
+  0, & i \ne j
+\end{cases} %]]></script>
+
+<p>So</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+UAV = 
+\begin{bmatrix} 
+  \sqrt{\lambda_{1}} &  & \cdots &  & & \cdots & \\
+  & \sqrt{\lambda_{2}} & \cdots & & & \cdots & \\
+  \vdots & \vdots & & \vdots & \vdots & & \vdots \\
+  & & \cdots & \sqrt{\lambda_{m}} & & \cdots &  
+\end{bmatrix}
+= \Sigma %]]></script>
+
+<p>and the SVD of A is 
+<script type="math/tex">A = U^{-1} \Sigma V^{-1}</script></p>
+
+<p> </p>
+
+<p> </p>
+
+<p><strong>Recap</strong>: the following are the steps to carry out SVD on any rectangle-shaped matrix <script type="math/tex">A</script> of shape <script type="math/tex">m \times n</script> (<script type="math/tex">m \le n</script>)</p>
+<ol>
+  <li>Compute <script type="math/tex">A A^{T}</script> and find its eigenvalues <script type="math/tex">\lambda_{i}</script> and eigenvectors <script type="math/tex">u_{i}</script> for <script type="math/tex">i = 1, \cdots, m</script>.</li>
+  <li>Build <script type="math/tex">m \times m</script> matrix <script type="math/tex">U = \begin{bmatrix}u_{1}^{T}\\u_{2}^{T} \\ \vdots \\ u_{m}^{T}\end{bmatrix}</script></li>
+  <li>Build <script type="math/tex">n \times n</script> matrix <script type="math/tex">% <![CDATA[
+V = \begin{bmatrix} v_{1} & v_{2} & \cdots & v_{m} & v_{m+1} & \cdots& v_{n} \end{bmatrix} %]]></script>, where <script type="math/tex">v_{i} = \frac{1}{\sqrt{\lambda_{i}}} A^{T}u_{i}</script> for <script type="math/tex">i = 1, \cdots, m</script>, and <script type="math/tex">v_{m + 1}, \cdots, v_{n}</script> are eigenvectors of <script type="math/tex">A^{T}A</script> corresponding to eigenvalues <script type="math/tex">\lambda_{m + 1}, \cdots, \lambda_{n}</script> that are not eigenvalues of <script type="math/tex">AA^{T}</script>.</li>
+  <li>
+    <p>Build matrix <script type="math/tex">% <![CDATA[
+\begin{bmatrix}
+  \sqrt{\lambda_{1}} &  & \cdots &  & & \cdots & \\
+  & \sqrt{\lambda_{2}} & \cdots & & & \cdots & \\
+  \vdots & \vdots & & \vdots & \vdots & & \vdots \\
+  & & \cdots & \sqrt{\lambda_{m}} & & \cdots &  
+\end{bmatrix} %]]></script> of shape <script type="math/tex">n \times m</script></p>
+  </li>
+  <li>Compute <script type="math/tex">A_{SVD} = U^{-1} \Sigma V^{-1}</script></li>
+</ol>
+
+<h2 id="example">Example</h2>
+
+<h3 id="toy-example">Toy example</h3>
+<p>First let’s create a small matrix that is easy to test out the theory:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">h</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">w</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># w must be &gt;= h 
+</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'float32'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Find the eigenvalues and eigenvectors of <code class="highlighter-rouge">A.dot(A.T)</code> and <code class="highlighter-rouge">A.T.dot(A)</code>, respectively:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">eigval1</span><span class="p">,</span> <span class="n">eigvec1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
+<span class="n">eigval2</span><span class="p">,</span> <span class="n">eigvec2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Build the matrix <code class="highlighter-rouge">U</code> and <code class="highlighter-rouge">V</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">U</span> <span class="o">=</span> <span class="n">eigvec1</span><span class="o">.</span><span class="n">T</span>
+
+<span class="c1"># Note: we use `thres` to determine which eigenvalues of `A.T.dot(A)` 
+# are NOT eigenvalues of `A.dot(A.T)`
+</span><span class="n">thres</span> <span class="o">=</span> <span class="mf">1e-6</span>
+<span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">if</span> 
+    <span class="n">np</span><span class="o">.</span><span class="nb">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="nb">abs</span><span class="p">(</span><span class="n">eigval2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">eigval1</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">thres</span><span class="p">]</span>
+
+<span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">eigvec1</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">eigval1</span><span class="p">),</span> 
+               <span class="n">eigvec2</span><span class="p">[:,</span> <span class="n">indices</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)])</span>
+</code></pre></div></div>
+
+<p>Build the matrix <code class="highlighter-rouge">Sigma</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">eigval1</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">-</span> <span class="n">h</span><span class="p">))])</span>
+</code></pre></div></div>
+<p>Finaly compute <code class="highlighter-rouge">A_SVD</code> (Note <code class="highlighter-rouge">U</code> and <code class="highlighter-rouge">V</code> are <a href="https://en.wikipedia.org/wiki/Orthogonal_matrix">orthonormal</a> matrices so their inverses are identical to their transposed forms):</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">A_SVD</span> <span class="o">=</span> <span class="n">U</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Sigma</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+</code></pre></div></div>
+<p>You can see that the reconstructed matrix is identical to the original (up to the error in numerical precision):</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+<span class="n">array</span><span class="p">([[</span><span class="mf">199.</span><span class="p">,</span> <span class="mf">227.</span><span class="p">,</span> <span class="mf">237.</span><span class="p">,</span> <span class="mf">107.</span><span class="p">,</span> <span class="mf">120.</span><span class="p">],</span>
+       <span class="p">[</span><span class="mf">254.</span><span class="p">,</span> <span class="mf">116.</span><span class="p">,</span> <span class="mf">184.</span><span class="p">,</span> <span class="mf">220.</span><span class="p">,</span> <span class="mf">171.</span><span class="p">],</span>
+       <span class="p">[</span><span class="mf">212.</span><span class="p">,</span> <span class="mf">150.</span><span class="p">,</span>  <span class="mf">85.</span><span class="p">,</span> <span class="mf">195.</span><span class="p">,</span>  <span class="mf">83.</span><span class="p">],</span>
+       <span class="p">[</span> <span class="mf">24.</span><span class="p">,</span>  <span class="mf">51.</span><span class="p">,</span> <span class="mf">178.</span><span class="p">,</span> <span class="mf">205.</span><span class="p">,</span> <span class="mf">135.</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="nb">round</span><span class="p">(</span><span class="n">A_SVD</span><span class="p">))</span>
+<span class="n">array</span><span class="p">([[</span><span class="mf">199.</span><span class="p">,</span> <span class="mf">227.</span><span class="p">,</span> <span class="mf">237.</span><span class="p">,</span> <span class="mf">107.</span><span class="p">,</span> <span class="mf">120.</span><span class="p">],</span>
+       <span class="p">[</span><span class="mf">254.</span><span class="p">,</span> <span class="mf">116.</span><span class="p">,</span> <span class="mf">184.</span><span class="p">,</span> <span class="mf">220.</span><span class="p">,</span> <span class="mf">171.</span><span class="p">],</span>
+       <span class="p">[</span><span class="mf">212.</span><span class="p">,</span> <span class="mf">150.</span><span class="p">,</span>  <span class="mf">85.</span><span class="p">,</span> <span class="mf">195.</span><span class="p">,</span>  <span class="mf">83.</span><span class="p">],</span>
+       <span class="p">[</span> <span class="mf">24.</span><span class="p">,</span>  <span class="mf">51.</span><span class="p">,</span> <span class="mf">178.</span><span class="p">,</span> <span class="mf">205.</span><span class="p">,</span> <span class="mf">135.</span><span class="p">]])</span>
+</code></pre></div></div>
+
+<h3 id="image-compression">Image compression</h3>
+
+<p>There is much neater way to carry out SVD than the above precedure. You can use the built-in function of NumPy in one line of code:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">vh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The matrices <code class="highlighter-rouge">u</code> and <code class="highlighter-rouge">vh</code> are like <code class="highlighter-rouge">U.T</code> and <code class="highlighter-rouge">V.T</code> as the above example, and <code class="highlighter-rouge">s</code> is a 1-D array holding the <script type="math/tex">\lambda_{i}</script>’s (a.k.a. Singular Values, hence the name of SVD), and they are by default sorted in descending order. Usually we’d re-represent the original matrix by keeping only the largest Singular Values, and truncate <code class="highlighter-rouge">u</code> and <code class="highlighter-rouge">vh</code> accordingly. This is known as <strong>Truncated SVD</strong>.</p>
+
+<p>Code:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+<span class="k">def</span> <span class="nf">truncated_svd_3_channel_compression</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+  <span class="s">"""`img` is 3-D array of shape [height, width, channels]
+  `t` is the number of singular values to keep
+  """</span>
+  <span class="n">u0</span><span class="p">,</span> <span class="n">s0</span><span class="p">,</span> <span class="n">vh0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">])</span>
+  <span class="n">u1</span><span class="p">,</span> <span class="n">s1</span><span class="p">,</span> <span class="n">vh1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span>
+  <span class="n">u2</span><span class="p">,</span> <span class="n">s2</span><span class="p">,</span> <span class="n">vh2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">])</span>
+
+  <span class="n">r</span> <span class="o">=</span> <span class="n">u0</span><span class="p">[:,</span> <span class="p">:</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">s0</span><span class="p">[:</span><span class="n">t</span><span class="p">]))</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vh0</span><span class="p">[:</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span>
+  <span class="n">g</span> <span class="o">=</span> <span class="n">u1</span><span class="p">[:,</span> <span class="p">:</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">s1</span><span class="p">[:</span><span class="n">t</span><span class="p">]))</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vh1</span><span class="p">[:</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span>
+  <span class="n">b</span> <span class="o">=</span> <span class="n">u2</span><span class="p">[:,</span> <span class="p">:</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">s2</span><span class="p">[:</span><span class="n">t</span><span class="p">]))</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vh2</span><span class="p">[:</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span>
+
+  <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'uint8'</span><span class="p">)</span>
+
+
+<span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Image</span><span class="o">.</span><span class="nb">open</span><span class="p">(</span><span class="s">'img.jpg'</span><span class="p">))</span>
+
+<span class="n">n10</span> <span class="o">=</span> <span class="n">truncated_svd_3_channel_compression</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Below are the images reconstructed using different number of SV’s as well as the original image. The total number of images is 450 (height of image).</p>
+
+<p align="center">
+<img src="/assets/n10.jpg" width="365" /> <img src="/assets/n20.jpg" width="365" />
+<br />
+Top 10 (L) and 20 (R) Singular Values
+</p>
+
+<p align="center">
+<img src="/assets/n30.jpg" width="365" /> <img src="/assets/n40.jpg" width="365" />
+<br />
+Top 30 (L) and 40 (R) Singular Values
+</p>
+
+<p align="center">
+<img src="/assets/n50.jpg" width="365" /> <img src="/assets/fountainpark.jpg" width="365" />
+<br />
+Top 50 (L) Singular Values and orignal image (R)
+</p>
+
+<p>We can see that as we increase the number of singular values, the reconstructed image gets less blurry and contain less “outlier” pixels, and the one reconstructed from only 50 singular values offers great approximation to the orignal image.</p>
+
+
+  </div><a class="u-url" href="/jekyll/update/2016/03/10/SVD.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">SuperComputer&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">SuperComputer&#39;s Blog</li><li><a class="u-email" href="mailto:ji.chao.stern@gmail.com">ji.chao.stern@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/chao-ji"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">chao-ji</span></a></li><li><a href="https://www.twitter.com/jekyllrb"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg> <span class="username">jekyllrb</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Practice. Research. Learn</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
