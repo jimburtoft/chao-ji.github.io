@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>Understanding Bilinear Image Resizing | SuperComputer’s Blog</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Understanding Bilinear Image Resizing" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Resizing an image (or a feature map) to a desired spatial dimension is a common operation when building computer vision applications based on convolutional neural networks. For example, some semantic segmentation models (like FCN or DeepLab) generate a feature map with a large stride S (i.e. height and width of the feature map is 1/S of that of the image, where S = 16 or 32), which must be resized back to the exact spatial dimension of the original image to provide pixelwise prediction." />
+<meta property="og:description" content="Resizing an image (or a feature map) to a desired spatial dimension is a common operation when building computer vision applications based on convolutional neural networks. For example, some semantic segmentation models (like FCN or DeepLab) generate a feature map with a large stride S (i.e. height and width of the feature map is 1/S of that of the image, where S = 16 or 32), which must be resized back to the exact spatial dimension of the original image to provide pixelwise prediction." />
+<link rel="canonical" href="http://localhost:4000/jekyll/update/2018/07/19/BilinearResize.html" />
+<meta property="og:url" content="http://localhost:4000/jekyll/update/2018/07/19/BilinearResize.html" />
+<meta property="og:site_name" content="SuperComputer’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2018-07-19T00:09:32+08:00" />
+<script type="application/ld+json">
+{"description":"Resizing an image (or a feature map) to a desired spatial dimension is a common operation when building computer vision applications based on convolutional neural networks. For example, some semantic segmentation models (like FCN or DeepLab) generate a feature map with a large stride S (i.e. height and width of the feature map is 1/S of that of the image, where S = 16 or 32), which must be resized back to the exact spatial dimension of the original image to provide pixelwise prediction.","@type":"BlogPosting","url":"http://localhost:4000/jekyll/update/2018/07/19/BilinearResize.html","headline":"Understanding Bilinear Image Resizing","dateModified":"2018-07-19T00:09:32+08:00","datePublished":"2018-07-19T00:09:32+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/jekyll/update/2018/07/19/BilinearResize.html"},"@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="SuperComputer's Blog" /></head>
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">SuperComputer&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Understanding Bilinear Image Resizing</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2018-07-19T00:09:32+08:00" itemprop="datePublished">Jul 19, 2018
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>Resizing an image (or a feature map) to a desired spatial dimension is a common operation when building computer vision applications based on convolutional neural networks. For example, some semantic segmentation models (like FCN or DeepLab) generate a feature map with a large stride S (i.e. height and width of the feature map is 1/S of that of the image, where S = 16 or 32), which must be resized back to the exact spatial dimension of the original image to provide pixelwise prediction.</p>
+
+<p>Bilinear interpolation is an intuitive algorithm for image resizing. It is a generalization of linear interpolation which only works on 1-D array. In this post, we will discuss the intuition behind interplation algorithms (linear or bilinear), and provide numpy implementations so you will understand exactly how they work. We will also investigate how to compute the <strong>backward</strong> pass of bilinear resizing when we train a neural network which uses this operation.</p>
+
+<h3 id="linear-interpolation">Linear Interpolation</h3>
+<p>We will first discuss Linear Interpolation which is more common and easier to understand.</p>
+
+<p>Let’s say we have two points on a straight line with coordinate <script type="math/tex">a</script> and <script type="math/tex">b</script>, and they are associated with values <script type="math/tex">A</script> and <script type="math/tex">B</script>. Now if we have a third point with coordinate <script type="math/tex">x</script> where <script type="math/tex">a \le x \le b</script>, how do we interpolate the values of cooridnates <script type="math/tex">a</script> and <script type="math/tex">b</script> at coordinate <script type="math/tex">x</script>?</p>
+
+<p align="center">
+<img src="/assets/bilinear_interpolation/linear_interpolation.png" width="400" />
+<br />
+Linear Interpolation between two ponits.
+</p>
+
+<p>The Linear Interpolation computes it as a <em>weighted average</em> of the values associated with the two points, where the weights are proportional to the distance between <script type="math/tex">x</script> and <script type="math/tex">a</script>, and <script type="math/tex">x</script> and <script type="math/tex">b</script>.</p>
+
+<script type="math/tex; mode=display">X = A \frac{b-x}{b-a} + B \frac{x-a}{b-a}</script>
+
+<p>or</p>
+
+<script type="math/tex; mode=display">X = A (1 - w) + B w</script>
+
+<p>where <script type="math/tex">w = \frac{x - a}{b - a}</script>.</p>
+
+<p>The weight for <script type="math/tex">A</script> is proportional to <script type="math/tex">x</script>’s distance to <script type="math/tex">b</script> (rather than <script type="math/tex">a</script>), while the weight for <script type="math/tex">B</script> is proportional to its distnace to <script type="math/tex">a</script> (rather than <script type="math/tex">b</script>). When <script type="math/tex">x</script> moves to <script type="math/tex">a</script>, its value <script type="math/tex">X</script> becomes <script type="math/tex">A</script>; similarly, <script type="math/tex">X</script> becomes <script type="math/tex">B</script> when <script type="math/tex">x</script> moves to <script type="math/tex">b</script>.</p>
+
+<h4 id="linearly-resize-1-d-array">Linearly Resize 1-D Array</h4>
+<p>Given that we know how to do interpolation between two points, let’s consider a more general scenario: we have a 1-D array <code class="highlighter-rouge">a</code> of size <code class="highlighter-rouge">n</code> (e.g <code class="highlighter-rouge">n = 5</code> ), and we wish to stretch or shrink the array to a differet size <code class="highlighter-rouge">m</code> (e.g <code class="highlighter-rouge">m = 4</code>), where the values in the new array <code class="highlighter-rouge">b</code> is somehow computed from the original array in a linear fashion.</p>
+
+<p>Image we place the <code class="highlighter-rouge">n = 5</code> points on a straight line, where they are spaced by a distance of 1.0. Now image there is another straight line that runs parallel to it, where we place the points of the new array. Note that we make the coordinates of the first and last element of the new array the same as their counterparts in the orignal array (i.e. 0.0 and 4.0).</p>
+
+<p>How do we get the values of array <code class="highlighter-rouge">b</code>? Well, it makes sense to let <code class="highlighter-rouge">b[0] == a[0]</code> and <code class="highlighter-rouge">b[3] == a[4]</code>, because they have the same coordinates. For those points in the new array for which we don’t have corresponding points in the original array (i.e. <code class="highlighter-rouge">b[1]</code> and <code class="highlighter-rouge">b[2]</code>), we can map them to the original array where they will have fractionally-valued coordinates (<code class="highlighter-rouge">4/3</code> and <code class="highlighter-rouge">8/3</code>). Then <code class="highlighter-rouge">b[4/3]</code> and <code class="highlighter-rouge">b[8/3]</code> can be computed using the Linear Interpolation approach from <code class="highlighter-rouge">a[1]</code>, <code class="highlighter-rouge">a[2]</code> and <code class="highlighter-rouge">a[2]</code>, <code class="highlighter-rouge">a[3]</code>.</p>
+
+<p>Now the question reduces to how do we map the coordinates from the new array <code class="highlighter-rouge">b</code> to the original array <code class="highlighter-rouge">a</code>. We notice that the mapping depends on the ratio of the length of “integer intervals” — in this case, it’s <code class="highlighter-rouge">4/3</code> (i.e. <code class="highlighter-rouge">(n - 1)/(m - 1)</code>). For element in array <code class="highlighter-rouge">b</code> with index <code class="highlighter-rouge">i</code>, its mapped coordinate in array <code class="highlighter-rouge">a</code> is <code class="highlighter-rouge">ratio * i</code>, and we compute the interpolation using the values of the two neighboring elements <code class="highlighter-rouge">a[floor(ratio * i)]</code> and <code class="highlighter-rouge">a[ceil(ratio * i)]</code>.</p>
+
+<p align="center">
+<img src="/assets/bilinear_interpolation/linear_resize.png" width="400" />
+<br />
+Resize 1-D array.
+</p>
+
+<p>Putting together, we have the algorithm for linearly resizing 1-D array:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">math</span>
+  
+<span class="k">def</span> <span class="nf">linear_resize</span><span class="p">(</span><span class="n">in_array</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+  <span class="s">"""
+  `in_array` is the input array.
+  `size` is the desired size.
+  """</span>
+  <span class="n">ratio</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">in_array</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">out_array</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+    <span class="n">low</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">ratio</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">high</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">ratio</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="n">ratio</span> <span class="o">*</span> <span class="n">i</span> <span class="o">-</span> <span class="n">low</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">in_array</span><span class="p">[</span><span class="n">low</span><span class="p">]</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">in_array</span><span class="p">[</span><span class="n">high</span><span class="p">]</span>
+
+    <span class="n">out_array</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">weight</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">weight</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">out_array</span>
+</code></pre></div></div>
+
+<h3 id="bilinear-interpolation">Bilinear Interpolation</h3>
+
+<p>Like linearly resizing a 1-D array, bilinearly resizing a 2-D array relies on bilinear interpolation, which can be broken down into linear resizing operations in <script type="math/tex">y</script> (height) and <script type="math/tex">x</script> (width) dimension. Suppose we have four points with coordinates <script type="math/tex">(y_{1}, x_{1})</script>, <script type="math/tex">(y_{1}, x_{2})</script>, <script type="math/tex">(y_{2}, x_{1})</script>, and <script type="math/tex">(y_{2}, x_{2})</script> and associated valued <script type="math/tex">A</script>, <script type="math/tex">B</script>, <script type="math/tex">C</script>, and <script type="math/tex">D</script>.</p>
+
+<p align="center">
+<img src="/assets/bilinear_interpolation/bilinear_resize.png" width="400" />
+<br />
+Bilinear interpolation between four points.
+</p>
+
+<p>We first compute the interpolated value of <script type="math/tex">X</script> and <script type="math/tex">Y</script> in the width dimension,</p>
+
+<script type="math/tex; mode=display">X = A(1-w_{x}) + B w_{x}</script>
+
+<script type="math/tex; mode=display">Y = C(1-w_{x}) + D w_{x}</script>
+
+<p>Then we will do linear interpolation between the two interpolated values <script type="math/tex">X</script> and <script type="math/tex">Y</script> in the height dimension,</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+Z & = X(1-w_{y}) + Y w_{y} \\
+  & = A(1 - w_{x})(1-w_{y}) + B w_{x} (1 - y_{y}) + C (1 - w_{x}) w_{y} + D w_{x} w_{y} \\
+\end{align} %]]></script>
+
+<p>where <script type="math/tex">w_{x} = \frac{x - x_{1}}{x_{2} - x_{1}}</script> and <script type="math/tex">w_{y} = \frac{y - y_{1}}{y_{2} - y_{1}}</script>.</p>
+
+<h4 id="bilinearly-resize-2-d-array">Bilinearly Resize 2-D Array</h4>
+
+<p>Bilinearly resizing a 2-D array is very much like linearly resizing a 1-D array. We first need to find the ratios (now in two dimensions),</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">ratio_y</span> <span class="o">=</span> <span class="p">(</span><span class="n">img_height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">ratio_x</span> <span class="o">=</span> <span class="p">(</span><span class="n">img_width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+<p>where <code class="highlighter-rouge">height</code> and <code class="highlighter-rouge">width</code> are the dimensions of the new 2-D array.</p>
+
+<p>Suppose we wish to compute the interpolated value for the point at coordinate <code class="highlighter-rouge">[i, j]</code> where <code class="highlighter-rouge">0 &lt;= i &lt; height</code> and <code class="highlighter-rouge">0 &lt;= j &lt; width</code>. Its mapped coordinate in the original 2-D array is computed as <code class="highlighter-rouge">[y_ratio * i, x_ratio * j]</code>. Then the coordinates of the four points that are closest to <code class="highlighter-rouge">[i, j]</code> are <code class="highlighter-rouge">[y_l, x_l]</code>, <code class="highlighter-rouge">[y_l, x_h]</code>, <code class="highlighter-rouge">[y_h, x_l]</code>, <code class="highlighter-rouge">[y_h, x_h]</code>, where</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">x_l</span><span class="p">,</span> <span class="n">y_l</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">j</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span>
+<span class="n">x_h</span><span class="p">,</span> <span class="n">y_h</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">j</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Putting together, we have the algorithm for bilinearly resizing 2-D array:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">math</span>
+
+<span class="k">def</span> <span class="nf">bilinear_resize</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">):</span>
+  <span class="s">"""
+  `image` is a 2-D numpy array
+  `height` and `width` are the desired spatial dimension of the new 2-D array.
+  """</span>
+  <span class="n">img_height</span><span class="p">,</span> <span class="n">img_width</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+  <span class="n">resized</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">([</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">])</span>
+
+  <span class="n">x_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">img_width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">width</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+  <span class="n">y_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">img_height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">height</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+
+  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">height</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">width</span><span class="p">):</span>
+
+      <span class="n">x_l</span><span class="p">,</span> <span class="n">y_l</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">j</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span>
+      <span class="n">x_h</span><span class="p">,</span> <span class="n">y_h</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">j</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span>
+
+      <span class="n">x_weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">j</span><span class="p">)</span> <span class="o">-</span> <span class="n">x_l</span>
+      <span class="n">y_weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="n">y_l</span>
+
+      <span class="n">a</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_l</span><span class="p">,</span> <span class="n">x_l</span><span class="p">]</span>
+      <span class="n">b</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_l</span><span class="p">,</span> <span class="n">x_h</span><span class="p">]</span>
+      <span class="n">c</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_h</span><span class="p">,</span> <span class="n">x_l</span><span class="p">]</span>
+      <span class="n">d</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_h</span><span class="p">,</span> <span class="n">x_h</span><span class="p">]</span>
+
+      <span class="n">pixel</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x_weight</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_weight</span><span class="p">)</span> \ 
+              <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">x_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_weight</span><span class="p">)</span> <span class="o">+</span> \
+              <span class="n">c</span> <span class="o">*</span> <span class="n">y_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x_weight</span><span class="p">)</span> <span class="o">+</span> \
+              <span class="n">d</span> <span class="o">*</span> <span class="n">x_weight</span> <span class="o">*</span> <span class="n">y_weight</span>
+
+      <span class="n">resized</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">pixel</span>
+
+  <span class="k">return</span> <span class="n">resized</span>
+</code></pre></div></div>
+
+<p>We verify the correctness of our implementation by comparing it with the reference implementation in tensorflow.</p>
+
+<p>First we need to create a 2-D array populated with random values:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">array</span><span class="p">([[</span><span class="mf">114.</span><span class="p">,</span> <span class="mf">195.</span><span class="p">,</span> <span class="mf">254.</span><span class="p">,</span> <span class="mf">217.</span><span class="p">,</span>  <span class="mf">33.</span><span class="p">,</span> <span class="mf">160.</span><span class="p">],</span>
+       <span class="p">[</span><span class="mf">110.</span><span class="p">,</span>  <span class="mf">91.</span><span class="p">,</span> <span class="mf">184.</span><span class="p">,</span> <span class="mf">143.</span><span class="p">,</span> <span class="mf">190.</span><span class="p">,</span> <span class="mf">124.</span><span class="p">],</span>
+       <span class="p">[</span><span class="mf">212.</span><span class="p">,</span> <span class="mf">163.</span><span class="p">,</span> <span class="mf">245.</span><span class="p">,</span>  <span class="mf">39.</span><span class="p">,</span>  <span class="mf">83.</span><span class="p">,</span> <span class="mf">188.</span><span class="p">],</span>
+       <span class="p">[</span> <span class="mf">23.</span><span class="p">,</span> <span class="mf">206.</span><span class="p">,</span>  <span class="mf">62.</span><span class="p">,</span>   <span class="mf">7.</span><span class="p">,</span>   <span class="mf">5.</span><span class="p">,</span> <span class="mf">206.</span><span class="p">],</span>
+       <span class="p">[</span><span class="mf">152.</span><span class="p">,</span> <span class="mf">177.</span><span class="p">,</span> <span class="mf">118.</span><span class="p">,</span> <span class="mf">155.</span><span class="p">,</span> <span class="mf">245.</span><span class="p">,</span>  <span class="mf">41.</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>and we will resize it into a 2-D array with 2 rows and 10 columns.</p>
+
+<p>Our implementation returns</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">array</span><span class="p">([[</span><span class="mf">114.</span>      <span class="p">,</span> <span class="mf">159.</span>      <span class="p">,</span> <span class="mf">201.55556</span> <span class="p">,</span> <span class="mf">234.33333</span> <span class="p">,</span> <span class="mf">245.77777</span> <span class="p">,</span>
+        <span class="mf">225.22223</span> <span class="p">,</span> <span class="mf">155.66667</span> <span class="p">,</span>  <span class="mf">53.444443</span><span class="p">,</span>  <span class="mf">89.44444</span> <span class="p">,</span> <span class="mf">160.</span>      <span class="p">],</span>
+       <span class="p">[</span><span class="mf">152.</span>      <span class="p">,</span> <span class="mf">165.88889</span> <span class="p">,</span> <span class="mf">170.44444</span> <span class="p">,</span> <span class="mf">137.66667</span> <span class="p">,</span> <span class="mf">126.22222</span> <span class="p">,</span>
+        <span class="mf">146.77777</span> <span class="p">,</span> <span class="mf">185.</span>      <span class="p">,</span> <span class="mf">235.</span>      <span class="p">,</span> <span class="mf">154.33333</span> <span class="p">,</span>  <span class="mf">41.</span>      <span class="p">]],</span>
+      <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)</span>
+</code></pre></div></div>
+<p>which is the same as the output of <code class="highlighter-rouge">tf.image.resize_images(tf.expand_dims(image, axis=2), [2, 10], align_corners=True)</code> (up to the numerical precision).</p>
+
+<p>Finally, let’s test out our implementation to resize a real image</p>
+
+<p align="center">
+<img src="/assets/bilinear_interpolation/original.png" width="387" /> <img src="/assets/bilinear_interpolation/resized.png" width="250" />
+<br />
+Left: Original image of size 425 by 775. Right: Resized image of size 500 by 500.
+</p>
+
+<h4 id="vectorized-version">Vectorized Version</h4>
+
+<p>NOTE: The function <code class="highlighter-rouge">bilinear_resize</code> uses python for loop, which runs very slow. We can take advantage of numpy’s vectorized computation on arrays to speed it up.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="k">def</span> <span class="nf">bilinear_resize_vectorized</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">):</span>
+  <span class="s">"""
+  `image` is a 2-D numpy array
+  `height` and `width` are the desired spatial dimension of the new 2-D array.
+  """</span>
+  <span class="n">img_height</span><span class="p">,</span> <span class="n">img_width</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+
+  <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+  <span class="n">x_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">img_width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">width</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+  <span class="n">y_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">img_height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">height</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+
+  <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="nb">divmod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">height</span> <span class="o">*</span> <span class="n">width</span><span class="p">),</span> <span class="n">width</span><span class="p">)</span>
+
+  <span class="n">x_l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+  <span class="n">y_l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+
+  <span class="n">x_h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+  <span class="n">y_h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+
+  <span class="n">x_weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">x_l</span>
+  <span class="n">y_weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="n">y_l</span>
+
+  <span class="n">a</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_l</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_l</span><span class="p">]</span>
+  <span class="n">b</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_l</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_h</span><span class="p">]</span>
+  <span class="n">c</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_h</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_l</span><span class="p">]</span>
+  <span class="n">d</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">y_h</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_h</span><span class="p">]</span>
+
+  <span class="n">resized</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x_weight</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_weight</span><span class="p">)</span> <span class="o">+</span> \
+            <span class="n">b</span> <span class="o">*</span> <span class="n">x_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_weight</span><span class="p">)</span> <span class="o">+</span> \
+            <span class="n">c</span> <span class="o">*</span> <span class="n">y_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x_weight</span><span class="p">)</span> <span class="o">+</span> \
+            <span class="n">d</span> <span class="o">*</span> <span class="n">x_weight</span> <span class="o">*</span> <span class="n">y_weight</span>
+
+  <span class="k">return</span> <span class="n">resized</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="backward-pass-of-bilinear-resizing">Backward Pass of Bilinear Resizing</h3>
+<p>Remember that bilinear resizing is essentially a <em>function</em> where the input is a 2-D array of shape <code class="highlighter-rouge">[img_height, img_width]</code> and output is a 2-D array of shape <code class="highlighter-rouge">[height, width]</code>. When doing backpropagation, we take as input the gradient <code class="highlighter-rouge">grad</code> backpropped from the downstream layer — a 2-D array of the same shape as the output (i.e. <code class="highlighter-rouge">[heigth, width]</code>), and we compute the gradient of shape <code class="highlighter-rouge">[img_height, img_width]</code> to be backpropped to its upstream layer.</p>
+
+<p>Note that in the forward pass (<code class="highlighter-rouge">bilinear_resize_vectorized</code>) we computed the output — resized image — as a linear combination of <code class="highlighter-rouge">a</code>, <code class="highlighter-rouge">b</code>, <code class="highlighter-rouge">c</code>, and <code class="highlighter-rouge">d</code>, each of which corresponds to a <em>subset</em> of entries of the input <code class="highlighter-rouge">image</code>. The gradient w.r.t to <code class="highlighter-rouge">a</code>, <code class="highlighter-rouge">b</code>, <code class="highlighter-rouge">c</code>, <code class="highlighter-rouge">d</code> are simply their coeffients, <code class="highlighter-rouge">(1 - x_weight) * (1 - y_weight)</code>, <code class="highlighter-rouge">x_weight * (1 - y_weight)</code>, <code class="highlighter-rouge">y_weight * (1 - x_weight)</code>, and <code class="highlighter-rouge">x_weight * y_weight</code>, multiplied by <code class="highlighter-rouge">grad</code>, and they must be properly <em>routed</em> to the corresponding entries in the input <code class="highlighter-rouge">image</code>. Detailed implementation are as below:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">bilinear_resize_vectorized_backward</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+  <span class="s">"""
+  `image` is a 2-D array, holding the input image
+  `height` and `width` are the desired spatial dimension of the new 2-D array. 
+  `grad` is a 2-D array of shape [height, width], holding the gradient to be
+    backpropped to `image`.
+  """</span>
+  <span class="n">img_height</span><span class="p">,</span> <span class="n">img_width</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+
+  <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+  <span class="n">x_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">img_width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">width</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+  <span class="n">y_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">img_height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">height</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+
+  <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="nb">divmod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">height</span> <span class="o">*</span> <span class="n">width</span><span class="p">),</span> <span class="n">width</span><span class="p">)</span>
+
+  <span class="n">x_l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+  <span class="n">y_l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+
+  <span class="n">x_h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+  <span class="n">y_h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'int32'</span><span class="p">)</span>
+
+  <span class="n">x_weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_ratio</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">x_l</span>
+  <span class="n">y_weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_ratio</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="n">y_l</span>
+
+  <span class="n">grad</span> <span class="o">=</span> <span class="n">grad</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+  <span class="c1"># gradient wrt `a`, `b`, `c`, `d`
+</span>  <span class="n">d_a</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x_weight</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_weight</span><span class="p">)</span> <span class="o">*</span> <span class="n">grad</span>
+  <span class="n">d_b</span> <span class="o">=</span> <span class="n">x_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_weight</span><span class="p">)</span> <span class="o">*</span> <span class="n">grad</span>
+  <span class="n">d_c</span> <span class="o">=</span> <span class="n">y_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x_weight</span><span class="p">)</span> <span class="o">*</span> <span class="n">grad</span>
+  <span class="n">d_d</span> <span class="o">=</span> <span class="n">x_weight</span> <span class="o">*</span> <span class="n">y_weight</span> <span class="o">*</span> <span class="n">grad</span>
+
+  <span class="c1"># [4 * height * width]
+</span>  <span class="n">grad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">d_a</span><span class="p">,</span> <span class="n">d_b</span><span class="p">,</span> <span class="n">d_c</span><span class="p">,</span> <span class="n">d_d</span><span class="p">])</span>
+  <span class="c1"># [4 * height * width]
+</span>  <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">y_l</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_l</span><span class="p">,</span>
+                            <span class="n">y_l</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_h</span><span class="p">,</span>
+                            <span class="n">y_h</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_l</span><span class="p">,</span>
+                            <span class="n">y_h</span> <span class="o">*</span> <span class="n">img_width</span> <span class="o">+</span> <span class="n">x_h</span><span class="p">])</span>
+
+  <span class="c1"># we must route gradients in `grad` to the correct indices of `image` in 
+</span>  <span class="c1"># `indices`, e.g. only entries of indices `y_l * img_width + x_l` in `image`
+</span>  <span class="c1"># gets the gradient backpropped from `a`.
+</span>
+  <span class="c1"># use numpy's broadcasting rule to generate 2-D array of shape
+</span>  <span class="c1"># [4 * height * width, img_height * img_width]
+</span>  <span class="n">indices</span> <span class="o">=</span> <span class="p">(</span><span class="n">indices</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">==</span>
+              <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">img_height</span> <span class="o">*</span> <span class="n">img_width</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)))</span>
+  <span class="n">d_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">apply_along_axis</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">grad</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="n">d_image</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">img_height</span><span class="p">,</span> <span class="n">img_width</span><span class="p">))</span>
+</code></pre></div></div>
+<p>As we can see, when computing the backward pass of bilinear resizing we do not need to store the value of the forward pass.</p>
+
+<p>Finally, we verify the correctness of the backward pass using some test case:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="n">tf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="n">tf</span><span class="o">.</span><span class="n">enable_eager_execution</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">g</span><span class="p">:</span>
+  <span class="n">image</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span>
+      <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'float32'</span><span class="p">))</span>
+  <span class="n">g</span><span class="o">.</span><span class="n">watch</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+  <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">resize_images</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="n">align_corners</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">grad_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'float32'</span><span class="p">)</span>
+<span class="n">grad_tf</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span>
+    <span class="n">output</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">output_gradients</span><span class="o">=</span><span class="p">[</span><span class="n">grad_val</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+
+<span class="n">grad</span> <span class="o">=</span> <span class="n">bilinear_resize_vectorized_backward</span><span class="p">(</span>
+    <span class="n">image</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="n">grad_val</span><span class="p">)</span>
+<span class="c1"># compare if `grad_tf` and `grad` are equal.
+</span>
+</code></pre></div></div>
+
+
+  </div><a class="u-url" href="/jekyll/update/2018/07/19/BilinearResize.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">SuperComputer&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">SuperComputer&#39;s Blog</li><li><a class="u-email" href="mailto:ji.chao.stern@gmail.com">ji.chao.stern@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/chao-ji"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">chao-ji</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Democratize ML </p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
