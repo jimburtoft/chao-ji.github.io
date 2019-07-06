@@ -1,8 +1,276 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.5">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-06-09T15:44:17+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">SuperComputer’s Blog</title><subtitle>Democratize ML </subtitle><entry><title type="html">From Likelihood Maximization to Loss Minimization</title><link href="http://localhost:4000/jekyll/update/2018/10/15/GLM.html" rel="alternate" type="text/html" title="From Likelihood Maximization to Loss Minimization" /><published>2018-10-15T13:13:12+08:00</published><updated>2018-10-15T13:13:12+08:00</updated><id>http://localhost:4000/jekyll/update/2018/10/15/GLM</id><content type="html" xml:base="http://localhost:4000/jekyll/update/2018/10/15/GLM.html">&lt;p&gt;Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the &lt;em&gt;prediction&lt;/em&gt; that comes out of the model with the &lt;em&gt;groundtruth&lt;/em&gt;, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the &lt;strong&gt;classification&lt;/strong&gt; task and the &lt;strong&gt;regression&lt;/strong&gt; task, predicting a vector &lt;script type=&quot;math/tex&quot;&gt;p_{cls}&lt;/script&gt; holding the confidence scores corresponding to object classes, and another vector &lt;script type=&quot;math/tex&quot;&gt;p_{loc}&lt;/script&gt; describing how the prior box’s geometric shape should be refined so it can tightly bound the object instance. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) and Huber loss (a variant of squared error loss) between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.5">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-08-11T23:51:23+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">SuperComputer’s Blog</title><subtitle>Democratize ML </subtitle><entry><title type="html">Optimality Proof of GAN</title><link href="http://localhost:4000/jekyll/update/2019/01/03/GAN_proof.html" rel="alternate" type="text/html" title="Optimality Proof of GAN" /><published>2019-01-03T17:14:28+08:00</published><updated>2019-01-03T17:14:28+08:00</updated><id>http://localhost:4000/jekyll/update/2019/01/03/GAN_proof</id><content type="html" xml:base="http://localhost:4000/jekyll/update/2019/01/03/GAN_proof.html">&lt;p&gt;This post documents a detailed proof of the conditions to achieve optimality for the original GAN.&lt;/p&gt;
 
-&lt;p&gt;You may legitmately ask why cross-entropy loss and squared-error loss are chosen for classification and regression tasks. In this post I’ll try to justify the choices by providing a probabilistic interpretation of different losss functions. To simplify the disscussion, I use the simplest form of neural network, one that just performs the affine transformation on the input (i.e. without nonlinearity), as the running example.&lt;/p&gt;
+&lt;p&gt; &lt;/p&gt;
 
-&lt;h3 id=&quot;maximize-likelihood-function&quot;&gt;Maximize Likelihood Function&lt;/h3&gt;</content><author><name></name></author><summary type="html">Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the prediction that comes out of the model with the groundtruth, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the classification task and the regression task, predicting a vector holding the confidence scores corresponding to object classes, and another vector describing how the prior box’s geometric shape should be refined so it can tightly bound the object instance. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) and Huber loss (a variant of squared error loss) between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses.</summary></entry><entry><title type="html">Understanding ROI Align</title><link href="http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html" rel="alternate" type="text/html" title="Understanding ROI Align" /><published>2018-07-20T15:12:53+08:00</published><updated>2018-07-20T15:12:53+08:00</updated><id>http://localhost:4000/jekyll/update/2018/07/20/ROIAlign</id><content type="html" xml:base="http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html">&lt;p&gt;In the &lt;a href=&quot;/_site/jekyll/update/2018/07/19/BilinearResize.html&quot;&gt;previous post&lt;/a&gt; we talked about bilinear interpolation algorithm. In this post we’ll see its application in &lt;strong&gt;ROI Align&lt;/strong&gt;, which is a technique based on bilinear interpolation to &lt;em&gt;smoothly&lt;/em&gt; crop a patch from a full-image feature map based on a region proposal, and then resize the cropped patch to a desired spatial size. It was introduced in the Mask R-CNN model, and has been shown to outperform the alternative that does “harsh crop” (i.e. ROI Pooling).&lt;/p&gt;
+&lt;p&gt;First, let’s recap the GAN formulation. We have a minimax game&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\displaystyle\min_{\theta_{G}}\max_{\theta_{D}} V(D, G) = \mathbb{E}_{x \sim p_{\text{data}}(x)} \log D(x; \theta_{D}) + \mathbb{E}_{z \sim p_{z}(z)} \log (1 - D(G(z; \theta_{G}); \theta_{D}))&lt;/script&gt;
+
+&lt;p&gt;The goal is to &lt;strong&gt;maximize&lt;/strong&gt; &lt;script type=&quot;math/tex&quot;&gt;V(D, G)&lt;/script&gt; over &lt;script type=&quot;math/tex&quot;&gt;\theta_{D}&lt;/script&gt; where &lt;script type=&quot;math/tex&quot;&gt;G&lt;/script&gt; is fixed, while at the same time &lt;strong&gt;minimize&lt;/strong&gt; &lt;script type=&quot;math/tex&quot;&gt;V(D, G)&lt;/script&gt; over &lt;script type=&quot;math/tex&quot;&gt;\theta_{G}&lt;/script&gt; where &lt;script type=&quot;math/tex&quot;&gt;D&lt;/script&gt; is fixed.&lt;/p&gt;
+
+&lt;p&gt;In this formulation, both &lt;script type=&quot;math/tex&quot;&gt;G(x; \theta_{G})&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;D(x; \theta_{D})&lt;/script&gt; are neural networks (e.g. Multilayer Perceptron or CNN) parameterized by &lt;script type=&quot;math/tex&quot;&gt;\theta_{G}&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;\theta_{D}&lt;/script&gt;&lt;/p&gt;
+
+&lt;p&gt;We want to find&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;The condition that &lt;script type=&quot;math/tex&quot;&gt;D&lt;/script&gt; must satisfy to maximize  &lt;script type=&quot;math/tex&quot;&gt;V(D, G)&lt;/script&gt;, while keeping &lt;script type=&quot;math/tex&quot;&gt;G&lt;/script&gt; fixed (Proposition 1)&lt;/li&gt;
+  &lt;li&gt;The condition that &lt;script type=&quot;math/tex&quot;&gt;G&lt;/script&gt; must satisfy to miminize  &lt;script type=&quot;math/tex&quot;&gt;V(D, G)&lt;/script&gt;, while keeping &lt;script type=&quot;math/tex&quot;&gt;D&lt;/script&gt; fixed (Proposition 2)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;A note on notation and assumption:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Both &lt;script type=&quot;math/tex&quot;&gt;x&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;z&lt;/script&gt; are random vectors (i.e. vector where each component is a random variable).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;Proposition 1:&lt;/strong&gt; When &lt;script type=&quot;math/tex&quot;&gt;\theta_{G}&lt;/script&gt; is fixed, the &lt;strong&gt;optimal Discriminator&lt;/strong&gt;&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;D(x; \theta_{D}) = 
+\frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_{g}(x)}&lt;/script&gt;
+
+&lt;p&gt;&lt;strong&gt;Proof&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+\begin{align}
+V(G, D) &amp; = \int_{x}  p_{\text{data}} (x) \log D(x; \theta_{D}) \mathrm{d}x + \int_{z} p_{z}(z) \log (1 - D(g(z); \theta_{D})) \mathrm{d}z \\
+&amp; = \int_{x} \left( p_{\text{data}} (x) \log D(x; \theta_{D}) + p_{g}(x) \log (1 - D(x; \theta_{D})) \right) \mathrm{d}x
+\end{align} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;Note that &lt;script type=&quot;math/tex&quot;&gt;z&lt;/script&gt; is a random vector where &lt;script type=&quot;math/tex&quot;&gt;z \sim p_{z}(z)&lt;/script&gt;, so &lt;script type=&quot;math/tex&quot;&gt;x = g(z)&lt;/script&gt; is also a random vector that follows some distribution denoted as  &lt;script type=&quot;math/tex&quot;&gt;p_{g}(x)&lt;/script&gt;.&lt;/p&gt;
+
+&lt;p&gt;Because &lt;script type=&quot;math/tex&quot;&gt;x&lt;/script&gt; is integrated out, &lt;script type=&quot;math/tex&quot;&gt;V(G, D)&lt;/script&gt; only depends on &lt;script type=&quot;math/tex&quot;&gt;\theta_{D}&lt;/script&gt;, and &lt;script type=&quot;math/tex&quot;&gt;V(G, D)&lt;/script&gt; is maximized if the expression being integrated&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;f = p_{\text{data}} (x) \log D(x; \theta_{D}) + p_{g}(x) \log (1 - D(x; \theta_{D}))&lt;/script&gt;
+
+&lt;p&gt;is maximized.&lt;/p&gt;
+
+&lt;p&gt;Let &lt;script type=&quot;math/tex&quot;&gt;y = D(x; \theta_{D})&lt;/script&gt;. Then &lt;script type=&quot;math/tex&quot;&gt;f = p_{\text{data}} (x) \log y + p_{g}(x) \log (1 - y)&lt;/script&gt;&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\frac{\partial}{\partial y} f = \frac{p_{\text{data}} (x)} {y} - \frac{p_{g}(x)}{1 - y} = 0&lt;/script&gt;
+
+&lt;p&gt;It follows that &lt;script type=&quot;math/tex&quot;&gt;y = D(x; \theta_{D}) = \frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_{g}(x)}&lt;/script&gt; is necessary condition for achieving optimum.&lt;/p&gt;
+
+&lt;p&gt;We also have
+&lt;script type=&quot;math/tex&quot;&gt;% &lt;![CDATA[
+\frac{\partial^{2} f}{\partial y^{2}} = - \frac{p_{\text{data}} (x)}{y^2} - \frac{ p_{g}(x)  }{(1 - y)^{2}} &lt; 0 %]]&gt;&lt;/script&gt;
+, because &lt;script type=&quot;math/tex&quot;&gt;y \in (0, 1)&lt;/script&gt;, &lt;script type=&quot;math/tex&quot;&gt;p_{\text{data}} (x) &gt; 0&lt;/script&gt;, and &lt;script type=&quot;math/tex&quot;&gt;p_{g}(x) &gt; 0&lt;/script&gt;. So &lt;script type=&quot;math/tex&quot;&gt;f&lt;/script&gt; achieves maximum at &lt;script type=&quot;math/tex&quot;&gt;y = \frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_{g}(x)}&lt;/script&gt;. &lt;strong&gt;End of Proof.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Proposition 2:&lt;/strong&gt; When &lt;script type=&quot;math/tex&quot;&gt;\theta_{D}&lt;/script&gt; is optimal and fixed, then we have &lt;script type=&quot;math/tex&quot;&gt;p_{g}(x) = p_{\text{data}}(x)&lt;/script&gt; almost everywhere, where &lt;script type=&quot;math/tex&quot;&gt;p_{g}&lt;/script&gt; is the probability distribution of the samples &lt;script type=&quot;math/tex&quot;&gt;x&lt;/script&gt; generatated from the &lt;strong&gt;optimal Generator&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Proof:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;When &lt;script type=&quot;math/tex&quot;&gt;D^{*}&lt;/script&gt; is optimal and fixed, we have&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;V(G, D^{*}) = \int_x \left( p_{\text{data}} (x) \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} + p_{g} (x) \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x&lt;/script&gt;
+
+&lt;p&gt;We denote &lt;script type=&quot;math/tex&quot;&gt;C(G) = V(G, D^{*})&lt;/script&gt; to indicate that &lt;script type=&quot;math/tex&quot;&gt;V(G, D^{*})&lt;/script&gt; is a now function of &lt;script type=&quot;math/tex&quot;&gt;\theta_{G}&lt;/script&gt;.&lt;/p&gt;
+
+&lt;p&gt;Next we will show the relationship between &lt;script type=&quot;math/tex&quot;&gt;C(G)&lt;/script&gt; and the Jenson-Shannon Divergence (between &lt;script type=&quot;math/tex&quot;&gt;p_{\text{data}}&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;p_{g}&lt;/script&gt;):&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+\begin{align}
+D_{\text{JS}}(p_{\text{data}} \| p_{g})  = &amp;  \frac{1}{2}  D_{\text{KL}} (p_{\text{data}} \| \frac{p_{\text{data}}+p_{g}}{2}) + \frac{1}{2}  D_{\text{KL}} (p_{g} \| \frac{p_{\text{data}}+p_{g}}{2}) \\
+ = &amp;  \frac{1}{2} \int_x p_{\text{data}} (x) \log \frac{2p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d}x + \frac{1}{2} \int_x p_{g} (x) \log \frac{2p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d}x \\ 
+ = &amp; \frac{1}{2} \int_x \left( p_{\text{data}} (x) \log \frac{2p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} + p_{g} (x) \log \frac{2p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d}x \\ 
+ = &amp; \frac{1}{2} \int_x  p_{\text{data}} (x) \left( \log 2 +  \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x + \\
+   &amp; \frac{1}{2} \int_x  p_{g} (x) \left( \log 2 +  \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x \\ 
+ = &amp; \frac{1}{2} \log 2 + \frac{1}{2} \int_x  p_{\text{data}} (x) \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d} x + \\
+   &amp; \frac{1}{2} \log 2 + \frac{1}{2} \int_x  p_{g} (x) \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d} x \\ 
+= &amp; \log 2 + \frac{1}{2}  \int_x \left( p_{\text{data}} (x) \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} + p_{g} (x) \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x \\
+= &amp; \log 2 + \frac{1}{2} C(G)
+\end{align} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;It follows that &lt;script type=&quot;math/tex&quot;&gt;C(G) = 2 D_{\text{JS}}(p_{\text{data}} \| p_{g}) - 2 \log 2&lt;/script&gt;, and &lt;script type=&quot;math/tex&quot;&gt;C(G)&lt;/script&gt; is minimized only when &lt;script type=&quot;math/tex&quot;&gt;D_{\text{JS}}(p_{\text{data}} \| p_{g}) = 0&lt;/script&gt;, or the two probability distributions &lt;script type=&quot;math/tex&quot;&gt;p_{\text{data}} = p_{g}(x)&lt;/script&gt; almost everywhere. &lt;strong&gt;End of proof.&lt;/strong&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html">This post documents a detailed proof of the conditions to achieve optimality for the original GAN.</summary></entry><entry><title type="html">From Likelihood Maximization to Loss Minimization</title><link href="http://localhost:4000/jekyll/update/2018/10/15/GLM.html" rel="alternate" type="text/html" title="From Likelihood Maximization to Loss Minimization" /><published>2018-10-15T13:13:12+08:00</published><updated>2018-10-15T13:13:12+08:00</updated><id>http://localhost:4000/jekyll/update/2018/10/15/GLM</id><content type="html" xml:base="http://localhost:4000/jekyll/update/2018/10/15/GLM.html">&lt;p&gt;Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the &lt;em&gt;prediction&lt;/em&gt; that comes out of the model with the &lt;em&gt;groundtruth&lt;/em&gt;, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the &lt;strong&gt;classification&lt;/strong&gt; task and the &lt;strong&gt;regression&lt;/strong&gt; task — it predicts a vector &lt;script type=&quot;math/tex&quot;&gt;p_{cls}&lt;/script&gt; holding the confidence scores corresponding to different object classes, and another vector &lt;script type=&quot;math/tex&quot;&gt;p_{loc}&lt;/script&gt; describing how the anchor boxes should be shifted and scaled so it can tightly bound the object instances. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) for classification task, and Huber loss (a variant of squared error loss) for regression task, between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses.&lt;/p&gt;
+
+&lt;p&gt;You may wonder why cross-entropy loss and squared-error loss are chosen for classification and regression tasks. In this post I’ll try to justify the choices by providing a probabilistic interpretation of different loss functions. To simplify the disscussion, I’ll use the simplest form of each task — logistic regression and linear regression, as our running examples.&lt;/p&gt;
+
+&lt;h3 id=&quot;problem-setup&quot;&gt;Problem Setup&lt;/h3&gt;
+
+&lt;p&gt;Logistic regression and linear regression are two closely related and well-established techniques in Statistics. They both take as input &lt;script type=&quot;math/tex&quot;&gt;n&lt;/script&gt; &lt;strong&gt;observations&lt;/strong&gt;, each represented as a &lt;script type=&quot;math/tex&quot;&gt;d&lt;/script&gt;-dimensional row vector, describing different attributes of a given observation (e.g. height and weight of a person). Also, each observation comes with a &lt;strong&gt;label&lt;/strong&gt;, which is discrete-valued (e.g. 1 or 0) for logistic regression, or continuously valued (e.g. 1.8) for linear regression. Formally, the observations are represented as a &lt;script type=&quot;math/tex&quot;&gt;n \times (d + 1)&lt;/script&gt; matrix &lt;script type=&quot;math/tex&quot;&gt;\mathbf{X}&lt;/script&gt;, and the labels are represented as a column vector &lt;script type=&quot;math/tex&quot;&gt;\mathbf{y}&lt;/script&gt;, that is&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+\mathbf{X} =
+ \begin{pmatrix}
+  1 &amp; x_{11} &amp; x_{12} &amp; \cdots &amp; x_{1d} \\
+  1 &amp; x_{21} &amp; x_{22} &amp; \cdots &amp; x_{2d} \\
+  \vdots  &amp; \vdots  &amp; \ddots &amp; \vdots  \\
+  1 &amp; x_{n1} &amp; x_{n2} &amp; \cdots &amp; x_{nd} 
+ \end{pmatrix}
+
+=
+
+\begin{pmatrix}
+\mathbf{x}_{1}^{T}  \\
+\mathbf{x}_{2}^{T}  \\
+\vdots \\
+\mathbf{x}_{n}^{T}  \\
+\end{pmatrix}
+
+\text{,}
+
+\mathbf{y} = 
+  \begin{pmatrix}
+  y_{1} \\
+  y_{2} \\
+  \vdots \\
+  y_{n}
+  \end{pmatrix} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;where &lt;script type=&quot;math/tex&quot;&gt;n&lt;/script&gt; is the number of observations and &lt;script type=&quot;math/tex&quot;&gt;d&lt;/script&gt; is the number of attributes (or features). Note: to accommodate the additional constant &lt;script type=&quot;math/tex&quot;&gt;w_{0}&lt;/script&gt; and to simplify notation (See below), we prefixed the &lt;script type=&quot;math/tex&quot;&gt;n \times d&lt;/script&gt; matrix with a column of ones.&lt;/p&gt;
+
+&lt;p&gt;To generate the predictions, we apply a linear transformation on each observation (i.e. &lt;script type=&quot;math/tex&quot;&gt;\mathbf{x}_{i}^{T}&lt;/script&gt;, row of &lt;script type=&quot;math/tex&quot;&gt;\mathbf{X}&lt;/script&gt;) — a linear combination of attributes plus a constant. Formally, the predicted values are&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\mathbf{\hat{y}} = 
+  \begin{pmatrix}
+  \hat{y}_{1} \\
+  \hat{y}_{2} \\
+  \vdots \\
+  \hat{y}_{n}
+  \end{pmatrix}
+  =
+\begin{pmatrix}
+    w_{0} + x_{11}w_{1} + x_{12}w_{2} + \cdots + x_{1d}w_{d}\\
+    w_{0} + x_{21}w_{1} + x_{22}w_{2} + \cdots + x_{2d}w_{d}\\
+    \vdots \\
+    w_{0} + x_{n1}w_{1} + x_{n2}w_{2} + \cdots + x_{nd}w_{d} 
+  \end{pmatrix} 
+
+= \mathbf{X} \mathbf{w} =
+\begin{pmatrix}
+
+\mathbf{x}_{1}^{T} \mathbf{w} \\
+\mathbf{x}_{2}^{T} \mathbf{w} \\
+\vdots \\
+\mathbf{x}_{n}^{T} \mathbf{w} \\
+
+\end{pmatrix}&lt;/script&gt;
+
+&lt;p&gt;where&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\mathbf{w} = 
+  \begin{pmatrix}
+  w_{0} \\
+  w_{1} \\
+  \vdots \\
+  w_{d}
+  \end{pmatrix}&lt;/script&gt;
+
+&lt;p&gt;For linear regression, we’ll output the prediction &lt;script type=&quot;math/tex&quot;&gt;\mathbf{\hat{y}}&lt;/script&gt; unchanged. However, for logistic regression, we’ll output an indicator vector, which takes the value of 1 if &lt;script type=&quot;math/tex&quot;&gt;\hat{\mathbf{y}} \ge 0&lt;/script&gt;, and 0 otherwise.&lt;/p&gt;
+
+&lt;h3 id=&quot;model-label-and-observations-as-random-variables&quot;&gt;Model label and observations as random variables&lt;/h3&gt;
+
+&lt;p&gt;The attributes of the observations &lt;script type=&quot;math/tex&quot;&gt;\mathbf{X}&lt;/script&gt; as well as the labels &lt;script type=&quot;math/tex&quot;&gt;\mathbf{y}&lt;/script&gt; are referred to as &lt;em&gt;training data&lt;/em&gt;, and they are &lt;em&gt;fixed&lt;/em&gt; once the process of collecting the training data is finished. However, this process itself may involve certain degree of stochasticity — we may end up collecting a different set of values for &lt;script type=&quot;math/tex&quot;&gt;\mathbf{X}&lt;/script&gt; if we were to repeat the collecting process; and even if we happen to get the same set of values for &lt;script type=&quot;math/tex&quot;&gt;\mathbf{X}&lt;/script&gt; as previously collected, the values for the labels &lt;script type=&quot;math/tex&quot;&gt;\mathbf{y}&lt;/script&gt; may still be different. As a result, we usually model the labels and observations as &lt;em&gt;random variables&lt;/em&gt;, so &lt;script type=&quot;math/tex&quot;&gt;\mathbf{y}&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;\mathbf{X}&lt;/script&gt; are just concrete values that the random variables can take on.&lt;/p&gt;
+
+&lt;p&gt;Formally, given that the training set contains &lt;script type=&quot;math/tex&quot;&gt;n&lt;/script&gt; observations with &lt;script type=&quot;math/tex&quot;&gt;d&lt;/script&gt; attributes, we use the random variable &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; (&lt;script type=&quot;math/tex&quot;&gt;i= 1, \cdots, n&lt;/script&gt;) to denote the label for the &lt;script type=&quot;math/tex&quot;&gt;i&lt;/script&gt;th observation, and random variables &lt;script type=&quot;math/tex&quot;&gt;X_{i1}, X_{i2}, \cdots, X_{id}&lt;/script&gt; to denote its attributes. So &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; takes on the value of each component of &lt;script type=&quot;math/tex&quot;&gt;\mathbf{y}&lt;/script&gt;, and &lt;script type=&quot;math/tex&quot;&gt;X_{i1}, X_{i2}, \cdots, X_{id}&lt;/script&gt; take on each row of &lt;script type=&quot;math/tex&quot;&gt;\mathbf{X}&lt;/script&gt;.&lt;/p&gt;
+
+&lt;p align=&quot;center&quot;&gt;
+&lt;img src=&quot;/assets/sampling.png&quot; width=&quot;1200&quot; /&gt;
+&lt;br /&gt;
+Sample a set of data points with observations, and then sample the corresponding labels.
+&lt;/p&gt;
+
+&lt;p&gt;Note that the stochasticity associated with the random variables &lt;script type=&quot;math/tex&quot;&gt;X_{i1}, X_{i2}, \cdots, X_{id}&lt;/script&gt; is determined by the distribution of samples in a population — we first sample (randomly) a set of data points according to the distribution, then record their attributes; However, the stochasticity associated with &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; is determined by both the distribution of samples (to determine &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; we first need to sample a data point &lt;script type=&quot;math/tex&quot;&gt;i&lt;/script&gt;), and the inevitable error assosicated the labelling the data point &lt;script type=&quot;math/tex&quot;&gt;i&lt;/script&gt; (e.g. the measured height may always be slightly different from the true height of an individual). For our discussion, we’ll treat the &lt;script type=&quot;math/tex&quot;&gt;X_{ij}&lt;/script&gt; as fixed, and only discuss &lt;script type=&quot;math/tex&quot;&gt;P(Y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id})&lt;/script&gt; — the probability of &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; conditioned on &lt;script type=&quot;math/tex&quot;&gt;X_{i1}, X_{i2}, \cdots, X_{id}&lt;/script&gt;, whose randomness is attributed to the labelling error.&lt;/p&gt;
+
+&lt;h3 id=&quot;the-error-distribution&quot;&gt;The error distribution&lt;/h3&gt;
+&lt;p&gt;To account for the labelling error, we’ll add an error term &lt;script type=&quot;math/tex&quot;&gt;\epsilon_{i}&lt;/script&gt; to the linear transformation of &lt;script type=&quot;math/tex&quot;&gt;X_{i1}, X_{i2}, \cdots, X_{id}&lt;/script&gt;, and denote the result as&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;Y_{i}^{*} = \sum_{j=1}^{d} X_{ij} w_{j} + w_{0} + \epsilon_{i}  \tag{1}&lt;/script&gt;
+
+&lt;p&gt;As discussed previously, for linear regression the label (or the predicted label) &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; is just the linear combination (plus the error), so&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;Y_{i} = Y_{i}^{*}   \tag{2}&lt;/script&gt;
+
+&lt;p&gt;,while for logistic regression, we add a binarization step:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;Y_{i} = 
+\begin{cases} 
+  1, \text{    if    } Y_{i}^{*} \ge 0 \\ 
+  0, \text{    if    } Y_{i}^{*} \lt 0        \tag{3}
+\end{cases}&lt;/script&gt;
+
+&lt;p&gt;As for the error term’s distribution, we assume it  follows a zero-mean &lt;a href=&quot;https://en.wikipedia.org/wiki/Normal_distribution&quot;&gt;normal distribution&lt;/a&gt;,&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\epsilon_{i} \sim \mathcal{N}(0, \sigma^{2})&lt;/script&gt;
+
+&lt;p&gt;for linear regression, and a &lt;a href=&quot;https://en.wikipedia.org/wiki/Logistic_distribution&quot;&gt;logistic distribution&lt;/a&gt; with location being 0 and scale being 1 for logistic regression.&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\epsilon_{i} \sim \text{Logistic}(0, 1)&lt;/script&gt;
+
+&lt;p&gt;We assume that each data point is labelled independently, so &lt;script type=&quot;math/tex&quot;&gt;\epsilon_{i}&lt;/script&gt; and hence &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; should be i.i.d. (independently and identically distributed).&lt;/p&gt;
+
+&lt;h3 id=&quot;maximizing-the-likelihood&quot;&gt;Maximizing the Likelihood&lt;/h3&gt;
+&lt;p&gt;Now we are ready to derive the probability of &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; conditioned on &lt;script type=&quot;math/tex&quot;&gt;X_{i1}, X_{i2}, \cdots, X_{id}&lt;/script&gt; analytically, i.e, &lt;script type=&quot;math/tex&quot;&gt;P(Y_{i} = y_{i} \vert X_{i1} = x_{i1}, X_{i2}=x_{i2}, \cdots, X_{id}=x_{id}; \mathbf{w})&lt;/script&gt;. We’ll find the &lt;script type=&quot;math/tex&quot;&gt;\mathbf{w}&lt;/script&gt; that maximizes the logarithm of probability, which is equivalent to maximizing the probability itself.&lt;/p&gt;
+
+&lt;h4 id=&quot;linear-regression&quot;&gt;Linear regression&lt;/h4&gt;
+&lt;p&gt;Given equations (1), (2), and &lt;script type=&quot;math/tex&quot;&gt;\epsilon_{i} \sim \mathcal{N}(0, \sigma^{2})&lt;/script&gt;, it follows that &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; is a &lt;strong&gt;continuous&lt;/strong&gt; random variable, and  &lt;script type=&quot;math/tex&quot;&gt;Y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id} \sim \mathcal{N}(\mathbf{x}_{i}^{T} \mathbf{w}, \sigma^{2})&lt;/script&gt;. Maximizing the log-likelihood, we have&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+\begin{align}
+ &amp;\arg\max_{\mathbf{w}} L(\mathbf{w}) \\
+= &amp;\arg\max_{\mathbf{w}} \log P(Y_{i} = y_{i} \vert X_{i1} = x_{i1}, X_{i2}=x_{i2}, \cdots, X_{id}=x_{id}; \mathbf{w}) \\ 
+= &amp;\arg\max_{\mathbf{w}} \log \frac{1}{\sqrt{2\pi} \sigma} e^{-\frac{(y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2}{2\sigma^{2}}} \\ 
+= &amp; \arg\max_{\mathbf{w}} \log e^{-\frac{(y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2}{2\sigma^{2}}} \\
+= &amp; \arg\min_{\mathbf{w}} (y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2
+\end{align} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;We have just proved that &lt;strong&gt;maximizing the likelihood is equivalent to minimizing the squared error&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h4 id=&quot;logistic-regression&quot;&gt;Logistic regression&lt;/h4&gt;
+&lt;p&gt;Given equations (1) and (3), it follows that &lt;script type=&quot;math/tex&quot;&gt;Y_{i}&lt;/script&gt; is a &lt;strong&gt;discrete&lt;/strong&gt; random variable that takes on the value of 0 or 1, and &lt;script type=&quot;math/tex&quot;&gt;Y_{i} = 1&lt;/script&gt; iff &lt;script type=&quot;math/tex&quot;&gt;Y_{i}^{*} \ge 0&lt;/script&gt;. We have&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+\begin{align}
+  &amp; P(Y_{i} = 1 \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}) \\ 
+= &amp; P(Y_{i}^{*} \ge 0 \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}) \\ 
+= &amp; P(\mathbf{x}_{i}^{T} \mathbf{w} + \epsilon_{i} \ge 0 \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w} ) \\
+= &amp; P(\epsilon_{i} \ge - \mathbf{x}_{i}^{T} \mathbf{w} \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}   ) \\ 
+= &amp; P(\epsilon_{i} \le \mathbf{x}_{i}^{T} \mathbf{w} \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}) \\
+= &amp; \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}}
+\end{align} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;where &lt;script type=&quot;math/tex&quot;&gt;X_{i\cdot} = x_{i\cdot}&lt;/script&gt; denotes &lt;script type=&quot;math/tex&quot;&gt;X_{i1} = x_{i1}, X_{i2}=x_{i2}, \cdots, X_{id}=x_{id}&lt;/script&gt;.&lt;/p&gt;
+
+&lt;p&gt;The last two steps follows from the fact that &lt;script type=&quot;math/tex&quot;&gt;\epsilon_{i} \sim \text{Logistic}(0, 1)&lt;/script&gt;, and its cumulative distribution function is just the logistic function, i.e.  &lt;script type=&quot;math/tex&quot;&gt;P(\epsilon_{i} \le x) = \frac{1}{1 + e^{-x}}&lt;/script&gt;, and &lt;script type=&quot;math/tex&quot;&gt;P(\epsilon_{i} \gt -x) = 1 - P(\epsilon_{i} \le -x) = 1 - \frac{1}{1 + e^{x}} = \frac{1}{1 + e^{-x}} = P(\epsilon_{i} \le x)&lt;/script&gt;&lt;/p&gt;
+
+&lt;p&gt;It follows that &lt;script type=&quot;math/tex&quot;&gt;Y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id} \sim \text{Bernoulli}(\frac{1}{1 + e^{-\mathbf{x_{i}}^{T} \mathbf{w}}})&lt;/script&gt;.&lt;/p&gt;
+
+&lt;p&gt;Maximizing the log-likelihood, we have&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+\begin{align}
+&amp;\arg\max_{\mathbf{w}} L(\mathbf{w})\\
+= &amp; \arg\max_{\mathbf{w}} \log P(Y_{i} = y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id}; \mathbf{w}) \\
+= &amp; \arg\max_{\mathbf{w}} \log P(Y_{i} = 1 \vert X_{i1}, X_{i2}, \cdots, X_{id}; \mathbf{w})^{y_{i}} P(Y_{i} = 0 \vert X_{i1}, X_{i2}, \cdots, X_{id}; \mathbf{w})^{1 - y_{i}} \\
+= &amp; \arg\max_{\mathbf{w}} y_{i} \log \left( \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) + (1 - y_{i}) \log \left( 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) \\
+= &amp; \arg\min_{\mathbf{w}} \left(-y_{i} \log \left( \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) - (1 - y_{i}) \log \left( 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) \right)
+\end{align} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;Again, we have proved that &lt;strong&gt;maximizing the likelihood is equivalent to minimizing the cross-entropy&lt;/strong&gt;, which is defined between the target distribution (Bernoulli) &lt;script type=&quot;math/tex&quot;&gt;(y_{i}, 1 - y_{i})&lt;/script&gt; and predicted distribution &lt;script type=&quot;math/tex&quot;&gt;(\frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}}, 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}})&lt;/script&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;miminize-the-loss&quot;&gt;Miminize the loss&lt;/h3&gt;
+&lt;p&gt;At this point, it’ll be trivial to derive the update algorithm to optimize the losses.&lt;/p&gt;
+&lt;h4 id=&quot;linear-regression-1&quot;&gt;Linear regression&lt;/h4&gt;
+&lt;p&gt;Let the loss function &lt;script type=&quot;math/tex&quot;&gt;J(\mathbf{w}) = \frac{1}{2} (y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2&lt;/script&gt;. Using chain rule, we have&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\frac{\partial}{\partial w_{j}} J(\mathbf{w}) = (y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} ) (-x_{ij}) = (\mathbf{x}_{i}^{T} \mathbf{w} - y_{i}) x_{ij}&lt;/script&gt;
+
+&lt;h4 id=&quot;logistic-regression-1&quot;&gt;Logistic regression&lt;/h4&gt;
+&lt;p&gt;Let &lt;script type=&quot;math/tex&quot;&gt;h(\mathbf{x_{i}^{T}}) = \frac{1}{1 + e^{-\mathbf{x}^{T} \mathbf{w}}}&lt;/script&gt; and the loss function &lt;script type=&quot;math/tex&quot;&gt;J(\mathbf{w}) = -y_{i} \log h(\mathbf{x_{i}^{T}})  - (1 - y_{i}) \log (1 - h(\mathbf{x_{i}^{T}}))&lt;/script&gt;. Using chain rule, we have&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+\begin{align}
+  &amp; \frac{\partial}{\partial w_{j}} J(\mathbf{w}) \\
+= &amp; \frac{\partial}{\partial w_{j}}  \left(-y_{i} \log h(\mathbf{x_{i}^{T}})  - (1 - y_{i}) \log (1 - h(\mathbf{x_{i}^{T}}))  \right) \\
+= &amp; -\frac{y_{i}}{h(\mathbf{x_{i}^{T}})} \frac{\partial}{\partial w_{j}} h(\mathbf{x_{i}^{T}}) + \frac{1 - y_{i}}{ 1 - h(\mathbf{x_{i}^{T}})} \frac{\partial}{\partial w_{j}} h(\mathbf{x_{i}^{T}}) \\
+= &amp; \left( \frac{1 - y_{i}}{1 - h(\mathbf{x_{i}^{T}}) } - \frac{y_{i}}{ h(\mathbf{x_{i}^{T}}) } \right) \frac{\partial}{\partial w_{j}} h(\mathbf{x_{i}^{T}}) \\
+= &amp; \left( \frac{1 - y_{i}}{1 - h(\mathbf{x_{i}^{T}}) } - \frac{y_{i}}{ h(\mathbf{x_{i}^{T}}) } \right) (1 - h(\mathbf{x_{i}^{T}})) h(\mathbf{x_{i}^{T}}) x_{ij} \\
+= &amp;  (h(\mathbf{x_{i}^{T}}) - y_{i}) x_{ij}
+\end{align} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;It’s a little surprising that we end up with almost identical update algorithm for both logistic regression and linear regression. In both algorithms, the magnitude of the update depends on the error &lt;script type=&quot;math/tex&quot;&gt;h(\mathbf{x_{i}^{T}}) - y_{i}&lt;/script&gt; or &lt;script type=&quot;math/tex&quot;&gt;\mathbf{x}_{i}^{T} \mathbf{w} - y_{i}&lt;/script&gt;, which means if we made a big error in the prediction, we should accordingly make a large stride to update the corredponding weight.&lt;/p&gt;
+
+&lt;h3 id=&quot;summary&quot;&gt;Summary&lt;/h3&gt;
+
+&lt;p&gt;In this post, we provided a probabilistic interpretation for the principle of loss minimization for linear regression and logistic regression. We discussed the sources of randomness for both labels and inputs, and modeled the labels as random variables conditioned on the observed inputs. We gave assumptions on the probability distributions of the errors, and finally showed that maximizing the likelihood of the labels is equivalent to minimizing the squared error loss or cross entropy loss.&lt;/p&gt;</content><author><name></name></author><summary type="html">Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the prediction that comes out of the model with the groundtruth, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the classification task and the regression task — it predicts a vector holding the confidence scores corresponding to different object classes, and another vector describing how the anchor boxes should be shifted and scaled so it can tightly bound the object instances. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) for classification task, and Huber loss (a variant of squared error loss) for regression task, between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses.</summary></entry><entry><title type="html">Understanding ROI Align</title><link href="http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html" rel="alternate" type="text/html" title="Understanding ROI Align" /><published>2018-07-20T15:12:53+08:00</published><updated>2018-07-20T15:12:53+08:00</updated><id>http://localhost:4000/jekyll/update/2018/07/20/ROIAlign</id><content type="html" xml:base="http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html">&lt;p&gt;In the &lt;a href=&quot;/_site/jekyll/update/2018/07/19/BilinearResize.html&quot;&gt;previous post&lt;/a&gt; we talked about bilinear interpolation algorithm. In this post we’ll see its application in &lt;strong&gt;ROI Align&lt;/strong&gt;, which is a technique based on bilinear interpolation to &lt;em&gt;smoothly&lt;/em&gt; crop a patch from a full-image feature map based on a region proposal, and then resize the cropped patch to a desired spatial size. It was introduced in the Mask R-CNN model, and has been shown to outperform the alternative that does “harsh crop” (i.e. ROI Pooling).&lt;/p&gt;
 
 &lt;p&gt;We’ll discuss the main idea of ROI Align and provide numpy implementation. In addition, we’ll discuss how to compute its backward pass when we train a neural network that uses ROI Align.&lt;/p&gt;
 
