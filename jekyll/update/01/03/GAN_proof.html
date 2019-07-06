@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>Optimality Proof of GAN | SuperComputer’s Blog</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Optimality Proof of GAN" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="This post documents a detailed proof of the conditions to achieve optimality for the original GAN." />
+<meta property="og:description" content="This post documents a detailed proof of the conditions to achieve optimality for the original GAN." />
+<link rel="canonical" href="http://localhost:4000/jekyll/update/2019/01/03/GAN_proof.html" />
+<meta property="og:url" content="http://localhost:4000/jekyll/update/2019/01/03/GAN_proof.html" />
+<meta property="og:site_name" content="SuperComputer’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2019-01-03T17:14:28+08:00" />
+<script type="application/ld+json">
+{"description":"This post documents a detailed proof of the conditions to achieve optimality for the original GAN.","@type":"BlogPosting","url":"http://localhost:4000/jekyll/update/2019/01/03/GAN_proof.html","headline":"Optimality Proof of GAN","dateModified":"2019-01-03T17:14:28+08:00","datePublished":"2019-01-03T17:14:28+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/jekyll/update/2019/01/03/GAN_proof.html"},"@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="SuperComputer's Blog" /></head>
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">SuperComputer&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Optimality Proof of GAN</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2019-01-03T17:14:28+08:00" itemprop="datePublished">Jan 3, 2019
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>This post documents a detailed proof of the conditions to achieve optimality for the original GAN.</p>
+
+<p> </p>
+
+<p>First, let’s recap the GAN formulation. We have a minimax game</p>
+
+<script type="math/tex; mode=display">\displaystyle\min_{\theta_{G}}\max_{\theta_{D}} V(D, G) = \mathbb{E}_{x \sim p_{\text{data}}(x)} \log D(x; \theta_{D}) + \mathbb{E}_{z \sim p_{z}(z)} \log (1 - D(G(z; \theta_{G}); \theta_{D}))</script>
+
+<p>The goal is to <strong>maximize</strong> <script type="math/tex">V(D, G)</script> over <script type="math/tex">\theta_{D}</script> where <script type="math/tex">G</script> is fixed, while at the same time <strong>minimize</strong> <script type="math/tex">V(D, G)</script> over <script type="math/tex">\theta_{G}</script> where <script type="math/tex">D</script> is fixed.</p>
+
+<p>In this formulation, both <script type="math/tex">G(x; \theta_{G})</script> and <script type="math/tex">D(x; \theta_{D})</script> are neural networks (e.g. Multilayer Perceptron or CNN) parameterized by <script type="math/tex">\theta_{G}</script> and <script type="math/tex">\theta_{D}</script></p>
+
+<p>We want to find</p>
+
+<ul>
+  <li>The condition that <script type="math/tex">D</script> must satisfy to maximize  <script type="math/tex">V(D, G)</script>, while keeping <script type="math/tex">G</script> fixed (Proposition 1)</li>
+  <li>The condition that <script type="math/tex">G</script> must satisfy to miminize  <script type="math/tex">V(D, G)</script>, while keeping <script type="math/tex">D</script> fixed (Proposition 2)</li>
+</ul>
+
+<p>A note on notation and assumption:</p>
+<ul>
+  <li>Both <script type="math/tex">x</script> and <script type="math/tex">z</script> are random vectors (i.e. vector where each component is a random variable).</li>
+</ul>
+
+<p><strong>Proposition 1:</strong> When <script type="math/tex">\theta_{G}</script> is fixed, the <strong>optimal Discriminator</strong></p>
+
+<script type="math/tex; mode=display">D(x; \theta_{D}) = 
+\frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_{g}(x)}</script>
+
+<p><strong>Proof</strong>:</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+V(G, D) & = \int_{x}  p_{\text{data}} (x) \log D(x; \theta_{D}) \mathrm{d}x + \int_{z} p_{z}(z) \log (1 - D(g(z); \theta_{D})) \mathrm{d}z \\
+& = \int_{x} \left( p_{\text{data}} (x) \log D(x; \theta_{D}) + p_{g}(x) \log (1 - D(x; \theta_{D})) \right) \mathrm{d}x
+\end{align} %]]></script>
+
+<p>Note that <script type="math/tex">z</script> is a random vector where <script type="math/tex">z \sim p_{z}(z)</script>, so <script type="math/tex">x = g(z)</script> is also a random vector that follows some distribution denoted as  <script type="math/tex">p_{g}(x)</script>.</p>
+
+<p>Because <script type="math/tex">x</script> is integrated out, <script type="math/tex">V(G, D)</script> only depends on <script type="math/tex">\theta_{D}</script>, and <script type="math/tex">V(G, D)</script> is maximized if the expression being integrated</p>
+
+<script type="math/tex; mode=display">f = p_{\text{data}} (x) \log D(x; \theta_{D}) + p_{g}(x) \log (1 - D(x; \theta_{D}))</script>
+
+<p>is maximized.</p>
+
+<p>Let <script type="math/tex">y = D(x; \theta_{D})</script>. Then <script type="math/tex">f = p_{\text{data}} (x) \log y + p_{g}(x) \log (1 - y)</script></p>
+
+<script type="math/tex; mode=display">\frac{\partial}{\partial y} f = \frac{p_{\text{data}} (x)} {y} - \frac{p_{g}(x)}{1 - y} = 0</script>
+
+<p>It follows that <script type="math/tex">y = D(x; \theta_{D}) = \frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_{g}(x)}</script> is necessary condition for achieving optimum.</p>
+
+<p>We also have
+<script type="math/tex">% <![CDATA[
+\frac{\partial^{2} f}{\partial y^{2}} = - \frac{p_{\text{data}} (x)}{y^2} - \frac{ p_{g}(x)  }{(1 - y)^{2}} < 0 %]]></script>
+, because <script type="math/tex">y \in (0, 1)</script>, <script type="math/tex">p_{\text{data}} (x) > 0</script>, and <script type="math/tex">p_{g}(x) > 0</script>. So <script type="math/tex">f</script> achieves maximum at <script type="math/tex">y = \frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_{g}(x)}</script>. <strong>End of Proof.</strong></p>
+
+<p><strong>Proposition 2:</strong> When <script type="math/tex">\theta_{D}</script> is optimal and fixed, then we have <script type="math/tex">p_{g}(x) = p_{\text{data}}(x)</script> almost everywhere, where <script type="math/tex">p_{g}</script> is the probability distribution of the samples <script type="math/tex">x</script> generatated from the <strong>optimal Generator</strong>.</p>
+
+<p><strong>Proof:</strong></p>
+
+<p>When <script type="math/tex">D^{*}</script> is optimal and fixed, we have</p>
+
+<script type="math/tex; mode=display">V(G, D^{*}) = \int_x \left( p_{\text{data}} (x) \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} + p_{g} (x) \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x</script>
+
+<p>We denote <script type="math/tex">C(G) = V(G, D^{*})</script> to indicate that <script type="math/tex">V(G, D^{*})</script> is a now function of <script type="math/tex">\theta_{G}</script>.</p>
+
+<p>Next we will show the relationship between <script type="math/tex">C(G)</script> and the Jenson-Shannon Divergence (between <script type="math/tex">p_{\text{data}}</script> and <script type="math/tex">p_{g}</script>):</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+D_{\text{JS}}(p_{\text{data}} \| p_{g})  = &  \frac{1}{2}  D_{\text{KL}} (p_{\text{data}} \| \frac{p_{\text{data}}+p_{g}}{2}) + \frac{1}{2}  D_{\text{KL}} (p_{g} \| \frac{p_{\text{data}}+p_{g}}{2}) \\
+ = &  \frac{1}{2} \int_x p_{\text{data}} (x) \log \frac{2p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d}x + \frac{1}{2} \int_x p_{g} (x) \log \frac{2p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d}x \\ 
+ = & \frac{1}{2} \int_x \left( p_{\text{data}} (x) \log \frac{2p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} + p_{g} (x) \log \frac{2p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d}x \\ 
+ = & \frac{1}{2} \int_x  p_{\text{data}} (x) \left( \log 2 +  \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x + \\
+   & \frac{1}{2} \int_x  p_{g} (x) \left( \log 2 +  \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x \\ 
+ = & \frac{1}{2} \log 2 + \frac{1}{2} \int_x  p_{\text{data}} (x) \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d} x + \\
+   & \frac{1}{2} \log 2 + \frac{1}{2} \int_x  p_{g} (x) \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \mathrm{d} x \\ 
+= & \log 2 + \frac{1}{2}  \int_x \left( p_{\text{data}} (x) \log \frac{p_{\text{data}}(x)}{ p_{\text{data}}(x) + p_{g}(x)} + p_{g} (x) \log \frac{p_{g}(x)}{ p_{\text{data}}(x) + p_{g}(x)} \right) \mathrm{d} x \\
+= & \log 2 + \frac{1}{2} C(G)
+\end{align} %]]></script>
+
+<p>It follows that <script type="math/tex">C(G) = 2 D_{\text{JS}}(p_{\text{data}} \| p_{g}) - 2 \log 2</script>, and <script type="math/tex">C(G)</script> is minimized only when <script type="math/tex">D_{\text{JS}}(p_{\text{data}} \| p_{g}) = 0</script>, or the two probability distributions <script type="math/tex">p_{\text{data}} = p_{g}(x)</script> almost everywhere. <strong>End of proof.</strong></p>
+
+
+  </div><a class="u-url" href="/jekyll/update/2019/01/03/GAN_proof.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">SuperComputer&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">SuperComputer&#39;s Blog</li><li><a class="u-email" href="mailto:ji.chao.stern@gmail.com">ji.chao.stern@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/chao-ji"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">chao-ji</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Democratize ML </p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
