@@ -133,6 +133,12 @@
 
 <p>Formally, given that the training set contains <script type="math/tex">n</script> observations with <script type="math/tex">d</script> attributes, we use the random variable <script type="math/tex">Y_{i}</script> (<script type="math/tex">i= 1, \cdots, n</script>) to denote the label for the <script type="math/tex">i</script>th observation, and random variables <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script> to denote its attributes. So <script type="math/tex">Y_{i}</script> takes on the value of each component of <script type="math/tex">\mathbf{y}</script>, and <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script> take on each row of <script type="math/tex">\mathbf{X}</script>.</p>
 
+<p align="center">
+<img src="/assets/sampling.png" width="1200" />
+<br />
+Sample a set of data points with observations, and then sample the corresponding labels.
+</p>
+
 <p>Note that the stochasticity associated with the random variables <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script> is determined by the distribution of samples in a population — we first sample (randomly) a set of data points according to the distribution, then record their attributes; However, the stochasticity associated with <script type="math/tex">Y_{i}</script> is determined by both the distribution of samples (to determine <script type="math/tex">Y_{i}</script> we first need to sample a data point <script type="math/tex">i</script>), and the inevitable error assosicated the labelling the data point <script type="math/tex">i</script> (e.g. the measured height may always be slightly different from the true height of an individual). For our discussion, we’ll treat the <script type="math/tex">X_{ij}</script> as fixed, and only discuss <script type="math/tex">P(Y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id})</script> — the probability of <script type="math/tex">Y_{i}</script> conditioned on <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script>, whose randomness is attributed to the labelling error.</p>
 
 <h3 id="the-error-distribution">The error distribution</h3>
