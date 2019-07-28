@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>From Likelihood Maximization to Loss Minimization | SuperComputer’s Blog</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="From Likelihood Maximization to Loss Minimization" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the prediction that comes out of the model with the groundtruth, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the classification task and the regression task — it predicts a vector holding the confidence scores corresponding to different object classes, and another vector describing how the anchor boxes should be shifted and scaled so it can tightly bound the object instances. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) for classification task, and Huber loss (a variant of squared error loss) for regression task, between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses." />
+<meta property="og:description" content="Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the prediction that comes out of the model with the groundtruth, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the classification task and the regression task — it predicts a vector holding the confidence scores corresponding to different object classes, and another vector describing how the anchor boxes should be shifted and scaled so it can tightly bound the object instances. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) for classification task, and Huber loss (a variant of squared error loss) for regression task, between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses." />
+<link rel="canonical" href="http://localhost:4000/jekyll/update/2018/10/15/GLM.html" />
+<meta property="og:url" content="http://localhost:4000/jekyll/update/2018/10/15/GLM.html" />
+<meta property="og:site_name" content="SuperComputer’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2018-10-15T13:13:12+08:00" />
+<script type="application/ld+json">
+{"description":"Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the prediction that comes out of the model with the groundtruth, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the classification task and the regression task — it predicts a vector holding the confidence scores corresponding to different object classes, and another vector describing how the anchor boxes should be shifted and scaled so it can tightly bound the object instances. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) for classification task, and Huber loss (a variant of squared error loss) for regression task, between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses.","@type":"BlogPosting","url":"http://localhost:4000/jekyll/update/2018/10/15/GLM.html","headline":"From Likelihood Maximization to Loss Minimization","dateModified":"2018-10-15T13:13:12+08:00","datePublished":"2018-10-15T13:13:12+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/jekyll/update/2018/10/15/GLM.html"},"@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="SuperComputer's Blog" /></head>
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">SuperComputer&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">From Likelihood Maximization to Loss Minimization</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2018-10-15T13:13:12+08:00" itemprop="datePublished">Oct 15, 2018
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>Loss function is an important component for almost all Machine Learning models, especially neural networks. It compares the <em>prediction</em> that comes out of the model with the <em>groundtruth</em>, and determines how dissimilar they are (i.e. how bad the prediction is). For example, a ConvNet-based object detector performs both the <strong>classification</strong> task and the <strong>regression</strong> task — it predicts a vector <script type="math/tex">p_{cls}</script> holding the confidence scores corresponding to different object classes, and another vector <script type="math/tex">p_{loc}</script> describing how the anchor boxes should be shifted and scaled so it can tightly bound the object instances. To measure the quality of the predictions, we compute the cross-entropy loss (Sigmoid or Softmax) for classification task, and Huber loss (a variant of squared error loss) for regression task, between the predictions and their respective groundtruths, and we tune the neural network weights to minimize the losses.</p>
+
+<p>You may wonder why cross-entropy loss and squared-error loss are chosen for classification and regression tasks. In this post I’ll try to justify the choices by providing a probabilistic interpretation of different loss functions. To simplify the disscussion, I’ll use the simplest form of each task — logistic regression and linear regression, as our running examples.</p>
+
+<h3 id="problem-setup">Problem Setup</h3>
+
+<p>Logistic regression and linear regression are two closely related and well-established techniques in Statistics. They both take as input <script type="math/tex">n</script> <strong>observations</strong>, each represented as a <script type="math/tex">d</script>-dimensional row vector, describing different attributes of a given observation (e.g. height and weight of a person). Also, each observation comes with a <strong>label</strong>, which is discrete-valued (e.g. 1 or 0) for logistic regression, or continuously valued (e.g. 1.8) for linear regression. Formally, the observations are represented as a <script type="math/tex">n \times (d + 1)</script> matrix <script type="math/tex">\mathbf{X}</script>, and the labels are represented as a column vector <script type="math/tex">\mathbf{y}</script>, that is</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\mathbf{X} =
+ \begin{pmatrix}
+  1 & x_{11} & x_{12} & \cdots & x_{1d} \\
+  1 & x_{21} & x_{22} & \cdots & x_{2d} \\
+  \vdots  & \vdots  & \ddots & \vdots  \\
+  1 & x_{n1} & x_{n2} & \cdots & x_{nd} 
+ \end{pmatrix}
+
+=
+
+\begin{pmatrix}
+\mathbf{x}_{1}^{T}  \\
+\mathbf{x}_{2}^{T}  \\
+\vdots \\
+\mathbf{x}_{n}^{T}  \\
+\end{pmatrix}
+
+\text{,}
+
+\mathbf{y} = 
+  \begin{pmatrix}
+  y_{1} \\
+  y_{2} \\
+  \vdots \\
+  y_{n}
+  \end{pmatrix} %]]></script>
+
+<p>where <script type="math/tex">n</script> is the number of observations and <script type="math/tex">d</script> is the number of attributes (or features). Note: to accommodate the additional constant <script type="math/tex">w_{0}</script> and to simplify notation (See below), we prefixed the <script type="math/tex">n \times d</script> matrix with a column of ones.</p>
+
+<p>To generate the predictions, we apply a linear transformation on each observation (i.e. <script type="math/tex">\mathbf{x}_{i}^{T}</script>, row of <script type="math/tex">\mathbf{X}</script>) — a linear combination of attributes plus a constant. Formally, the predicted values are</p>
+
+<script type="math/tex; mode=display">\mathbf{\hat{y}} = 
+  \begin{pmatrix}
+  \hat{y}_{1} \\
+  \hat{y}_{2} \\
+  \vdots \\
+  \hat{y}_{n}
+  \end{pmatrix}
+  =
+\begin{pmatrix}
+    w_{0} + x_{11}w_{1} + x_{12}w_{2} + \cdots + x_{1d}w_{d}\\
+    w_{0} + x_{21}w_{1} + x_{22}w_{2} + \cdots + x_{2d}w_{d}\\
+    \vdots \\
+    w_{0} + x_{n1}w_{1} + x_{n2}w_{2} + \cdots + x_{nd}w_{d} 
+  \end{pmatrix} 
+
+= \mathbf{X} \mathbf{w} =
+\begin{pmatrix}
+
+\mathbf{x}_{1}^{T} \mathbf{w} \\
+\mathbf{x}_{2}^{T} \mathbf{w} \\
+\vdots \\
+\mathbf{x}_{n}^{T} \mathbf{w} \\
+
+\end{pmatrix}</script>
+
+<p>where</p>
+
+<script type="math/tex; mode=display">\mathbf{w} = 
+  \begin{pmatrix}
+  w_{0} \\
+  w_{1} \\
+  \vdots \\
+  w_{d}
+  \end{pmatrix}</script>
+
+<p>For linear regression, we’ll output the prediction <script type="math/tex">\mathbf{\hat{y}}</script> unchanged. However, for logistic regression, we’ll output an indicator vector, which takes the value of 1 if <script type="math/tex">\hat{\mathbf{y}} \ge 0</script>, and 0 otherwise.</p>
+
+<h3 id="model-label-and-observations-as-random-variables">Model label and observations as random variables</h3>
+
+<p>The attributes of the observations <script type="math/tex">\mathbf{X}</script> as well as the labels <script type="math/tex">\mathbf{y}</script> are referred to as <em>training data</em>, and they are <em>fixed</em> once the process of collecting the training data is finished. However, this process itself may involve certain degree of stochasticity — we may end up collecting a different set of values for <script type="math/tex">\mathbf{X}</script> if we were to repeat the collecting process; and even if we happen to get the same set of values for <script type="math/tex">\mathbf{X}</script> as previously collected, the values for the labels <script type="math/tex">\mathbf{y}</script> may still be different. As a result, we usually model the labels and observations as <em>random variables</em>, so <script type="math/tex">\mathbf{y}</script> and <script type="math/tex">\mathbf{X}</script> are just concrete values that the random variables can take on.</p>
+
+<p>Formally, given that the training set contains <script type="math/tex">n</script> observations with <script type="math/tex">d</script> attributes, we use the random variable <script type="math/tex">Y_{i}</script> (<script type="math/tex">i= 1, \cdots, n</script>) to denote the label for the <script type="math/tex">i</script>th observation, and random variables <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script> to denote its attributes. So <script type="math/tex">Y_{i}</script> takes on the value of each component of <script type="math/tex">\mathbf{y}</script>, and <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script> take on each row of <script type="math/tex">\mathbf{X}</script>.</p>
+
+<p>Note that the stochasticity associated with the random variables <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script> is determined by the distribution of samples in a population — we first sample (randomly) a set of data points according to the distribution, then record their attributes; However, the stochasticity associated with <script type="math/tex">Y_{i}</script> is determined by both the distribution of samples (to determine <script type="math/tex">Y_{i}</script> we first need to sample a data point <script type="math/tex">i</script>), and the inevitable error assosicated the labelling the data point <script type="math/tex">i</script> (e.g. the measured height may always be slightly different from the true height of an individual). For our discussion, we’ll treat the <script type="math/tex">X_{ij}</script> as fixed, and only discuss <script type="math/tex">P(Y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id})</script> — the probability of <script type="math/tex">Y_{i}</script> conditioned on <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script>, whose randomness is attributed to the labelling error.</p>
+
+<h3 id="the-error-distribution">The error distribution</h3>
+<p>To account for the labelling error, we’ll add an error term <script type="math/tex">\epsilon_{i}</script> to the linear transformation of <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script>, and denote the result as</p>
+
+<script type="math/tex; mode=display">Y_{i}^{*} = \sum_{j=1}^{d} X_{ij} w_{j} + w_{0} + \epsilon_{i}  \tag{1}</script>
+
+<p>As discussed previously, for linear regression the label (or the predicted label) <script type="math/tex">Y_{i}</script> is just the linear combination (plus the error), so</p>
+
+<script type="math/tex; mode=display">Y_{i} = Y_{i}^{*}   \tag{2}</script>
+
+<p>,while for logistic regression, we add a binarization step:</p>
+
+<script type="math/tex; mode=display">Y_{i} = 
+\begin{cases} 
+  1, \text{    if    } Y_{i}^{*} \ge 0 \\ 
+  0, \text{    if    } Y_{i}^{*} \lt 0        \tag{3}
+\end{cases}</script>
+
+<p>As for the error term’s distribution, we assume it  follows a zero-mean <a href="https://en.wikipedia.org/wiki/Normal_distribution">normal distribution</a>,</p>
+
+<script type="math/tex; mode=display">\epsilon_{i} \sim \mathcal{N}(0, \sigma^{2})</script>
+
+<p>for linear regression, and a <a href="https://en.wikipedia.org/wiki/Logistic_distribution">logistic distribution</a> with location being 0 and scale being 1 for logistic regression.</p>
+
+<script type="math/tex; mode=display">\epsilon_{i} \sim \text{Logistic}(0, 1)</script>
+
+<p>We assume that each data point is labelled independently, so <script type="math/tex">\epsilon_{i}</script> and hence <script type="math/tex">Y_{i}</script> should be i.i.d. (independently and identically distributed).</p>
+
+<h3 id="maximizing-the-likelihood">Maximizing the Likelihood</h3>
+<p>Now we are ready to derive the probability of <script type="math/tex">Y_{i}</script> conditioned on <script type="math/tex">X_{i1}, X_{i2}, \cdots, X_{id}</script> analytically, i.e, <script type="math/tex">P(Y_{i} = y_{i} \vert X_{i1} = x_{i1}, X_{i2}=x_{i2}, \cdots, X_{id}=x_{id}; \mathbf{w})</script>. We’ll find the <script type="math/tex">\mathbf{w}</script> that maximizes the logarithm of probability, which is equivalent to maximizing the probability itself.</p>
+
+<h4 id="linear-regression">Linear regression</h4>
+<p>Given equations (1), (2), and <script type="math/tex">\epsilon_{i} \sim \mathcal{N}(0, \sigma^{2})</script>, it follows that <script type="math/tex">Y_{i}</script> is a <strong>continuous</strong> random variable, and  <script type="math/tex">Y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id} \sim \mathcal{N}(\mathbf{x}_{i}^{T} \mathbf{w}, \sigma^{2})</script>. Maximizing the log-likelihood, we have</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+ &\arg\max_{\mathbf{w}} L(\mathbf{w}) \\
+= &\arg\max_{\mathbf{w}} \log P(Y_{i} = y_{i} \vert X_{i1} = x_{i1}, X_{i2}=x_{i2}, \cdots, X_{id}=x_{id}; \mathbf{w}) \\ 
+= &\arg\max_{\mathbf{w}} \log \frac{1}{\sqrt{2\pi} \sigma} e^{-\frac{(y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2}{2\sigma^{2}}} \\ 
+= & \arg\max_{\mathbf{w}} \log e^{-\frac{(y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2}{2\sigma^{2}}} \\
+= & \arg\min_{\mathbf{w}} (y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2
+\end{align} %]]></script>
+
+<p>We have just proved that <strong>maximizing the likelihood is equivalent to minimizing the squared error</strong>.</p>
+
+<h4 id="logistic-regression">Logistic regression</h4>
+<p>Given equations (1) and (3), it follows that <script type="math/tex">Y_{i}</script> is a <strong>discrete</strong> random variable that takes on the value of 0 or 1, and <script type="math/tex">Y_{i} = 1</script> iff <script type="math/tex">Y_{i}^{*} \ge 0</script>. We have</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+  & P(Y_{i} = 1 \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}) \\ 
+= & P(Y_{i}^{*} \ge 0 \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}) \\ 
+= & P(\mathbf{x}_{i}^{T} \mathbf{w} + \epsilon_{i} \ge 0 \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w} ) \\
+= & P(\epsilon_{i} \ge - \mathbf{x}_{i}^{T} \mathbf{w} \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}   ) \\ 
+= & P(\epsilon_{i} \le \mathbf{x}_{i}^{T} \mathbf{w} \vert X_{i\cdot} = x_{i\cdot}; \mathbf{w}) \\
+= & \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}}
+\end{align} %]]></script>
+
+<p>where <script type="math/tex">X_{i\cdot} = x_{i\cdot}</script> denotes <script type="math/tex">X_{i1} = x_{i1}, X_{i2}=x_{i2}, \cdots, X_{id}=x_{id}</script>.</p>
+
+<p>The last two steps follows from the fact that <script type="math/tex">\epsilon_{i} \sim \text{Logistic}(0, 1)</script>, and its cumulative distribution function is just the logistic function, i.e.  <script type="math/tex">P(\epsilon_{i} \le x) = \frac{1}{1 + e^{-x}}</script>, and <script type="math/tex">P(\epsilon_{i} \gt -x) = 1 - P(\epsilon_{i} \le -x) = 1 - \frac{1}{1 + e^{x}} = \frac{1}{1 + e^{-x}} = P(\epsilon_{i} \le x)</script></p>
+
+<p>It follows that <script type="math/tex">Y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id} \sim \text{Bernoulli}(\frac{1}{1 + e^{-\mathbf{x_{i}}^{T} \mathbf{w}}})</script>.</p>
+
+<p>Maximizing the log-likelihood, we have</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+&\arg\max_{\mathbf{w}} L(\mathbf{w})\\
+= & \arg\max_{\mathbf{w}} \log P(Y_{i} = y_{i} \vert X_{i1}, X_{i2}, \cdots, X_{id}; \mathbf{w}) \\
+= & \arg\max_{\mathbf{w}} \log P(Y_{i} = 1 \vert X_{i1}, X_{i2}, \cdots, X_{id}; \mathbf{w})^{y_{i}} P(Y_{i} = 0 \vert X_{i1}, X_{i2}, \cdots, X_{id}; \mathbf{w})^{1 - y_{i}} \\
+= & \arg\max_{\mathbf{w}} y_{i} \log \left( \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) + (1 - y_{i}) \log \left( 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) \\
+= & \arg\min_{\mathbf{w}} \left(-y_{i} \log \left( \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) - (1 - y_{i}) \log \left( 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) \right)
+\end{align} %]]></script>
+
+<p>Again, we have proved that <strong>maximizing the likelihood is equivalent to minimizing the cross-entropy</strong>, which is defined between the target distribution Bernoulli distribution <script type="math/tex">(y_{i}, 1 - y_{i})</script> and predicted distribution <script type="math/tex">(\frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}}, 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}})</script>.</p>
+
+<h3 id="miminize-the-loss">Miminize the loss</h3>
+<p>At this point, it’ll bew trivial to derive the update algorithm to optimize the losses.</p>
+<h4 id="linear-regression-1">Linear regression</h4>
+<p>Let the loss function <script type="math/tex">J(\mathbf{w}) = \frac{1}{2} (y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2</script>. Using chain rule, we have</p>
+
+<script type="math/tex; mode=display">\frac{\partial}{\partial w_{j}} J(\mathbf{w}) = (y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} ) (-x_{ij}) = (\mathbf{x}_{i}^{T} \mathbf{w} - y_{i}) x_{ij}</script>
+
+<h4 id="logistic-regression-1">Logistic regression</h4>
+<p>Let <script type="math/tex">h(\mathbf{x_{i}^{T}}) = \frac{1}{1 + e^{-\mathbf{x}^{T} \mathbf{w}}}</script> and the loss function <script type="math/tex">J(\mathbf{w}) = -y_{i} \log h(\mathbf{x_{i}^{T}})  - (1 - y_{i}) \log (1 - h(\mathbf{x_{i}^{T}}))</script>. Using chain rule, we have</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+  & \frac{\partial}{\partial w_{j}} J(\mathbf{w}) \\
+= & \frac{\partial}{\partial w_{j}}  \left(-y_{i} \log h(\mathbf{x_{i}^{T}})  - (1 - y_{i}) \log (1 - h(\mathbf{x_{i}^{T}}))  \right) \\
+= & -\frac{y_{i}}{h(\mathbf{x_{i}^{T}})} \frac{\partial}{\partial w_{j}} h(\mathbf{x_{i}^{T}}) + \frac{1 - y_{i}}{ 1 - h(\mathbf{x_{i}^{T}})} \frac{\partial}{\partial w_{j}} h(\mathbf{x_{i}^{T}}) \\
+= & \left( \frac{1 - y_{i}}{1 - h(\mathbf{x_{i}^{T}}) } - \frac{y_{i}}{ h(\mathbf{x_{i}^{T}}) } \right) \frac{\partial}{\partial w_{j}} h(\mathbf{x_{i}^{T}}) \\
+= & \left( \frac{1 - y_{i}}{1 - h(\mathbf{x_{i}^{T}}) } - \frac{y_{i}}{ h(\mathbf{x_{i}^{T}}) } \right) (1 - h(\mathbf{x_{i}^{T}})) h(\mathbf{x_{i}^{T}}) x_{ij} \\
+= &  (h(\mathbf{x_{i}^{T}}) - y_{i}) x_{ij}
+\end{align} %]]></script>
+
+<p>It’s a little surprising that we end up with almost identical update algorithm for both logistic regression and linear regression. In both algorithms, the magnitude of the update depends on the error <script type="math/tex">h(\mathbf{x_{i}^{T}}) - y_{i}</script> or <script type="math/tex">\mathbf{x}_{i}^{T} \mathbf{w} - y_{i}</script>, which means if we made a big error in the prediction, we should accordingly make a large stride to update the corredponding weight.</p>
+
+<h3 id="summary">Summary</h3>
+
+<p>In this post, we provided a probabilistic interpretation for the principle of loss minimization for linear regression and logistic regression. We discussed the sources of randomness for both labels and inputs, and treated the labels as random variables conditioned on the observed inputs. We gave assumptions on the probability distributions of the errors, and finally showed that maximizing the likelihood of the labels is equivalent to minimizing the squared error loss or cross entropy loss.</p>
+
+
+  </div><a class="u-url" href="/jekyll/update/2018/10/15/GLM.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">SuperComputer&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">SuperComputer&#39;s Blog</li><li><a class="u-email" href="mailto:ji.chao.stern@gmail.com">ji.chao.stern@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/chao-ji"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">chao-ji</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Democratize ML </p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
