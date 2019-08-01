@@ -215,10 +215,10 @@ Sample a set of data points with observations, and then sample the corresponding
 = & \arg\min_{\mathbf{w}} \left(-y_{i} \log \left( \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) - (1 - y_{i}) \log \left( 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}} \right) \right)
 \end{align} %]]></script>
 
-<p>Again, we have proved that <strong>maximizing the likelihood is equivalent to minimizing the cross-entropy</strong>, which is defined between the target distribution Bernoulli distribution <script type="math/tex">(y_{i}, 1 - y_{i})</script> and predicted distribution <script type="math/tex">(\frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}}, 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}})</script>.</p>
+<p>Again, we have proved that <strong>maximizing the likelihood is equivalent to minimizing the cross-entropy</strong>, which is defined between the target distribution (Bernoulli) <script type="math/tex">(y_{i}, 1 - y_{i})</script> and predicted distribution <script type="math/tex">(\frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}}, 1 - \frac{1}{1 + e^{-\mathbf{x}_{i}^{T} \mathbf{w}}})</script>.</p>
 
 <h3 id="miminize-the-loss">Miminize the loss</h3>
-<p>At this point, it’ll bew trivial to derive the update algorithm to optimize the losses.</p>
+<p>At this point, it’ll be trivial to derive the update algorithm to optimize the losses.</p>
 <h4 id="linear-regression-1">Linear regression</h4>
 <p>Let the loss function <script type="math/tex">J(\mathbf{w}) = \frac{1}{2} (y_{i} - \mathbf{x}_{i}^{T} \mathbf{w} )^2</script>. Using chain rule, we have</p>
 
@@ -241,7 +241,7 @@ Sample a set of data points with observations, and then sample the corresponding
 
 <h3 id="summary">Summary</h3>
 
-<p>In this post, we provided a probabilistic interpretation for the principle of loss minimization for linear regression and logistic regression. We discussed the sources of randomness for both labels and inputs, and treated the labels as random variables conditioned on the observed inputs. We gave assumptions on the probability distributions of the errors, and finally showed that maximizing the likelihood of the labels is equivalent to minimizing the squared error loss or cross entropy loss.</p>
+<p>In this post, we provided a probabilistic interpretation for the principle of loss minimization for linear regression and logistic regression. We discussed the sources of randomness for both labels and inputs, and modeled the labels as random variables conditioned on the observed inputs. We gave assumptions on the probability distributions of the errors, and finally showed that maximizing the likelihood of the labels is equivalent to minimizing the squared error loss or cross entropy loss.</p>
 
 
   </div><a class="u-url" href="/jekyll/update/2018/10/15/GLM.html" hidden></a>
