@@ -15,7 +15,7 @@
 <meta property="og:type" content="article" />
 <meta property="article:published_time" content="2018-07-20T15:12:53+08:00" />
 <script type="application/ld+json">
-{"description":"In the previous post we talked about bilinear interpolation algorithm. In this post we’ll see its application in ROI Align, which is a technique based on bilinear interpolation to smoothly crop a patch from a full-image feature map based on a region proposal, and then resize the cropped patch to a desired spatial size. It was introduced in the Mask R-CNN model, and has been shown to outperform the alternative that does “harsh crop” (i.e. ROI Pooling).","@type":"BlogPosting","url":"http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html","headline":"Understanding ROI Align","dateModified":"2018-07-20T15:12:53+08:00","datePublished":"2018-07-20T15:12:53+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html"},"@context":"http://schema.org"}</script>
+{"url":"http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html","headline":"Understanding ROI Align","dateModified":"2018-07-20T15:12:53+08:00","datePublished":"2018-07-20T15:12:53+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/jekyll/update/2018/07/20/ROIAlign.html"},"description":"In the previous post we talked about bilinear interpolation algorithm. In this post we’ll see its application in ROI Align, which is a technique based on bilinear interpolation to smoothly crop a patch from a full-image feature map based on a region proposal, and then resize the cropped patch to a desired spatial size. It was introduced in the Mask R-CNN model, and has been shown to outperform the alternative that does “harsh crop” (i.e. ROI Pooling).","@type":"BlogPosting","@context":"http://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="SuperComputer's Blog" /></head>
 
@@ -50,7 +50,7 @@
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <p>In the <a href="/_site/jekyll/update/2018/07/19/BilinearResize.html">previous post</a> we talked about bilinear interpolation algorithm. In this post we’ll see its application in <strong>ROI Align</strong>, which is a technique based on bilinear interpolation to <em>smoothly</em> crop a patch from a full-image feature map based on a region proposal, and then resize the cropped patch to a desired spatial size. It was introduced in the Mask R-CNN model, and has been shown to outperform the alternative that does “harsh crop” (i.e. ROI Pooling).</p>
+    <p>In the <a href="https://chao-ji.github.io/jekyll/update/2018/07/19/BilinearResize.html">previous post</a> we talked about bilinear interpolation algorithm. In this post we’ll see its application in <strong>ROI Align</strong>, which is a technique based on bilinear interpolation to <em>smoothly</em> crop a patch from a full-image feature map based on a region proposal, and then resize the cropped patch to a desired spatial size. It was introduced in the Mask R-CNN model, and has been shown to outperform the alternative that does “harsh crop” (i.e. ROI Pooling).</p>
 
 <p>We’ll discuss the main idea of ROI Align and provide numpy implementation. In addition, we’ll discuss how to compute its backward pass when we train a neural network that uses ROI Align.</p>
 
@@ -312,7 +312,7 @@
 </div>
 
       <div class="footer-col footer-col-3">
-        <p>Democratize ML </p>
+        <p>Dedicated to the clarity in explaining Machine Learning. </p>
       </div>
     </div>
 
