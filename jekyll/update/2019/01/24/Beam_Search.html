@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>Beam Search | SuperComputer’s Blog</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Beam Search" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Intelligently generating a coherent sequence of words is an important feature of a wide range of modern NLP applications like machine translation, chatbots, question answering, etc.. The process of sequence generation boils down to repeatedly performing a simple action: spitting out the next word based on the current word (and implicitly all the words that have been generated so far), which is implemented by a function or subroutine that computes a probability distribution over all legitimate next words and decides which word to output according to that prob distribution." />
+<meta property="og:description" content="Intelligently generating a coherent sequence of words is an important feature of a wide range of modern NLP applications like machine translation, chatbots, question answering, etc.. The process of sequence generation boils down to repeatedly performing a simple action: spitting out the next word based on the current word (and implicitly all the words that have been generated so far), which is implemented by a function or subroutine that computes a probability distribution over all legitimate next words and decides which word to output according to that prob distribution." />
+<link rel="canonical" href="http://localhost:4000/jekyll/update/2019/01/24/Beam_Search.html" />
+<meta property="og:url" content="http://localhost:4000/jekyll/update/2019/01/24/Beam_Search.html" />
+<meta property="og:site_name" content="SuperComputer’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2019-01-24T03:34:28+08:00" />
+<script type="application/ld+json">
+{"url":"http://localhost:4000/jekyll/update/2019/01/24/Beam_Search.html","headline":"Beam Search","dateModified":"2019-01-24T03:34:28+08:00","datePublished":"2019-01-24T03:34:28+08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/jekyll/update/2019/01/24/Beam_Search.html"},"description":"Intelligently generating a coherent sequence of words is an important feature of a wide range of modern NLP applications like machine translation, chatbots, question answering, etc.. The process of sequence generation boils down to repeatedly performing a simple action: spitting out the next word based on the current word (and implicitly all the words that have been generated so far), which is implemented by a function or subroutine that computes a probability distribution over all legitimate next words and decides which word to output according to that prob distribution.","@type":"BlogPosting","@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="SuperComputer's Blog" /></head>
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">SuperComputer&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Beam Search</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2019-01-24T03:34:28+08:00" itemprop="datePublished">Jan 24, 2019
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>Intelligently generating a coherent sequence of words is an important feature of a wide range of modern NLP applications like machine translation, chatbots, question answering, etc.. The process of sequence generation boils down to repeatedly performing a simple action: spitting out the next word based on the current word (and implicitly all the words that have been generated so far), which is implemented by a function or subroutine that computes a probability distribution over all legitimate next words and decides which word to output according to that prob distribution.</p>
+
+<p align="center">
+  <img src="/assets/20190124/example.png" width="600" />
+  <br /> Figure 1. Generate sequence by repeatedly picking the next word.
+</p>
+
+<p>Roughly speaking, we are interested in finding a sequence that is most likely to be generated, quantified by the <em>probability score</em> of the sequence, or equivalently the sum of logarithm of probabilities (sum-of-log-probs) of its constituent words. Although it might be straightforward to let the function output whichever word with the largest probability throughout the entire process, it’s worth noting that the function has a unique property in that it takes in <em>its own</em> output at previous time steps to compute the current output, and as a result the prob distribution of next word may <em>change</em> depending on the choice we made in the past. As we will see shortly, this property has subtle implication on our word-picking strategy — picking words with lower probabilities, a seemingly non-optimal move, may eventually pay off as it unlocks access to choices that may lead to overall higher score of the entire sequence.</p>
+
+<p align="center">
+  <img src="/assets/20190124/greedy.png" width="300" /><img src="/assets/20190124/optimal.png" width="300" />
+  <br /> Figure 2. Left: sequence "ABC" found by greedy search with probability 0.048; Right: optimal sequence "ACB" with probability 0.054. Note the probability distribution diverges starting from time step 3, because different choices were made at the preceding step ("C" vs. "B"). The search leading to the globally optimal sequence made a locally non-optimal choice at time step 2. Image credit: [http://www.d2l.ai/chapter_recurrent-modern/beam-search.html]
+</p>
+
+<h2 id="intuition">Intuition</h2>
+
+<p>So what would be a good word-picking strategy? Notice that we are essentially facing a <em>tree search</em> problem – We start off with a single partial sequence that contains only the special word <code class="highlighter-rouge">SOS</code> (Start Of Sequence), together with its sum-of-log-probs (i.e. <script type="math/tex">0=\log 1</script>). We would like to consider each word from the vocabulary as a potential next word of the current partial sequence, so we duplicate it to <script type="math/tex">V</script> (vocabulary size) copies and each copy gets extended with a different word. Then we update the sum-of-log-probs of the <script type="math/tex">V</script> partial sequences that are now one word longer. Obviously we are going to end up with an exponential search space of <script type="math/tex">V^n</script> sequences if we were to repeat this process for <script type="math/tex">n</script> steps, which would make any algorithm that seeks to <em>exhaustively</em> search for the sequence with largest sum-of-log-probs computationally intractable.</p>
+
+<p align="center">
+  <img src="/assets/20190124/exhaustive.png" width="500" />
+  <br /> Figure 3. Exhaustive Search expands the search tree unboundedly.
+</p>
+
+<p>Rather than let the search space grow unboundedly with the length of sequence, <a href="https://en.wikipedia.org/wiki/Beam_search">Beam Search</a> limits the total number of sequences that we are tracking to a constant <script type="math/tex">k</script> (a.k.a. <strong>beam width</strong>). Like exhaustive search, when we expand the current set of <script type="math/tex">k</script> candidate partial sequences (a.k.a. beams) of length <script type="math/tex">l</script>, we consider each of the <script type="math/tex">V</script> vocabulary words as the potential next word, leading to <script type="math/tex">kV</script> sequences of length <script type="math/tex">l + 1</script>. <em>Unlike</em> exhaustive search, we prune all but the top <script type="math/tex">k</script> most promising (with largest sum-of-log-probs) candidates, bringing the “candidate pool” back to the original size. However, the downside is that there is no guarantee Beam Search is going to find the same optimal solution as the exhaustive search, because the goal state leading to optimality may have been pruned halfway. In this sense, Beam Search is a <em>heuristic</em> searching algorithm.</p>
+
+<p align="center">
+  <img src="/assets/20190124/beam width.png" width="500" />
+  <br /> Figure 4. Beam Search prunes candidate sequences to a constant size k=4. Candidates first get extended by one word and expanded by a factor of V=3, then get pruned back to beam width k=4. 
+</p>
+
+<h2 id="implementation">Implementation</h2>
+<p>So far we have briefly gone over the general ideas of Beam Search. In this part, we are going to get to the nuts and bolts of it that you should understand to implement it correctly.</p>
+
+<h3 id="each-beam-maintains-its-own-set-of-states">Each beam maintains its own set of states</h3>
+<p>At this point you should already be convinced that we need to keep track of the status of <em>each beam</em> as we grow the partial sequences. We create ndarrays <code class="highlighter-rouge">active_seqs</code> and <code class="highlighter-rouge">active_log_probs</code> with shape <code class="highlighter-rouge">[batch_size, beam_width, partial_seq_len]</code> and <code class="highlighter-rouge">[batch_size, beam_width]</code>, respectively, where the slices into the beam dimension, <code class="highlighter-rouge">active_seqs[:, j]</code> and <code class="highlighter-rouge">active_log_probs[:, j]</code>, store the <em>status</em> of beam <code class="highlighter-rouge">j</code>, i.e. the list of word IDs making that partial sequence and the corresponding sum-of-log-prob.</p>
+
+<p align="center">
+  <img src="/assets/20190124/duplicate.png" width="800" />
+  <br /> Figure 5. Initial setup of active partial sequences &amp; their sum-of-log-probs, and what they look like a few steps into the searching process. For example, the sum-of-log-prob of the partial sequence [SOS, ..., 523] equals -0.334 aftern Step n.
+</p>
+
+<p>As shown in Figure 5, we started with a single copy of the initial partial sequence (<code class="highlighter-rouge">SOS</code>) and its sum-of-log-prob (<code class="highlighter-rouge">0.0</code>), and we need to duplicate them to <code class="highlighter-rouge">beam_width</code> copies so each beam gets its own set of states. However, if we were to simply copy the initial value of sum-of-log-prob across all beams, we would end up with identical partial sequences after “Step 1”. The trick is to “suppress” the sum-of-log-probs of partial squences coming from all but the first beam, so only those sequences will “survive” after the pruning (See Figure 6).</p>
+
+<p align="center">
+  <img src="/assets/20190124/initial_step.png" width="800" />
+  <br /> Figure 6. Computing logits of "next words" (by calling get_next()) and updating the sum-of-log-probs (by adding "logits" with duplicated "active_log_probs[i]"). Note that the distributions of the logits of "next words" are the same across different beams because the same input "SOS" was fed to get_next(); and the -inf entries in "active_log_probs[i]" push the scores of partial sequences from Beam 2, 3, and 4 to -inf, so we are effectively picking top scoring candidates only from Beam 1.
+
+</p>
+
+<p>You may have noticed that some variable names we referenced are prefixed with <code class="highlighter-rouge">active_</code>. By that we mean they are still being <em>actively</em> extended, untill we stumble across <code class="highlighter-rouge">EOS</code> (like <code class="highlighter-rouge">SOS</code>), which is another special word from the vocabulary that signals the <em>End of Sequence</em>. We say those partial sequences ending with <code class="highlighter-rouge">EOS</code> are in the <em>finished</em> state (as opposed to <em>active</em>), and their states will be stored in ndarrays other than <code class="highlighter-rouge">active_seqs</code> and <code class="highlighter-rouge">active_log_probs</code>. Intuitively, active sequence plays the role of “frontiers” as we explore the search space, whereas finished sequence records those that are indeed “finished” and are ready to output. We want to make sure that the width of the frontier (i.e. number of active sequences) is unchanged throughout the course of Beam Search.</p>
+
+<h3 id="how-states-are-updated">How states are updated</h3>
+
+<p align="center">
+  <img src="/assets/20190124/overview.png" width="800" />
+  <br /> Figure 7. Overview of how active and finished sequences are updated within a single step of Beam Search. 
+</p>
+
+<p>Now we are ready to explain exactly what happens in a single step of Beam Search, where the partial sequences get extended by one word and their sum-of-log-probs get updated accordingly. The main logic can be broken down into three substeps:</p>
+
+<ul>
+  <li>Grow Active Sequences</li>
+  <li>Gather Top Active Sequences</li>
+  <li>Gather Top Finished Sequences</li>
+</ul>
+
+<h4 id="grow-active-sequences">Grow Active Sequences</h4>
+
+<p align="center">
+  <img src="/assets/20190124/step_n.png" width="800" />
+  <img src="/assets/20190124/grow_active_seq.png" width="800" />
+  <br /> Figure 8: How the "frontiers" of the exploration are expanded and pruned. 
+</p>
+
+<p>We first need to evaluate the likelihood of each word in the vocabulary being the next word of the current set of candidate partial sequences <code class="highlighter-rouge">active_seqs[i]</code>. We call the function <code class="highlighter-rouge">get_next()</code> that outputs the <code class="highlighter-rouge">logits</code> of each potential next word whose index ranges from <code class="highlighter-rouge">0</code> to <code class="highlighter-rouge">vocab_size - 1</code>. The <code class="highlighter-rouge">logits</code> will be converted to log-prob and added to the existing sum-of-log-probs <code class="highlighter-rouge">active_log_probs[i]</code>. We will reduce the set of candidate partial sequences from <code class="highlighter-rouge">beam_width * vocab_size</code> to <code class="highlighter-rouge">k = beam_width * 2</code> by picking the top <code class="highlighter-rouge">k</code> scoring candidates (“Candidate Pool” in Figure 7 and 8).</p>
+
+<p>The reason <code class="highlighter-rouge">k</code> is <code class="highlighter-rouge">beam_width * 2</code> as opposed to <code class="highlighter-rouge">beam_width</code> is that we have to make sure the number of active sequences is still <code class="highlighter-rouge">beam_width</code> at the end of each step, and letting <code class="highlighter-rouge">k = beam_width * 2</code> guarantees that we would always end up with <em>at least</em> <code class="highlighter-rouge">beam_width</code> active sequences to pick from (convince yourself this is so).</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">grow_active_seqs</span><span class="p">(</span><span class="n">active_seq</span><span class="p">,</span> <span class="n">active_log_probs</span><span class="p">,</span> <span class="n">active_cache</span><span class="p">,</span> <span class="n">get_next</span><span class="p">):</span>
+  <span class="s">"""Grows the search tree of the active sequences by one level, and gathers
+  the top-scoring `2 * beam_width` candidates.
+
+  Args:
+    active_seq: tensor of shape [batch_size, beam_width, partial_seq_len]
+    active_log_probs: tensor of shape [batch_size, beam_width]
+    active_cache: nested dict containing tensors of shape [batch_size,
+      beam_width, ...]
+    get_next: a callable that computes the logits of next words.
+
+  Returns:
+    updated_seq: tensor of shape [batch_size, beam_width * 2,
+      partial_seq_len + 1]
+    updated_log_probs: tensor of shape [batch_size, beam_width * 2]
+    updated_active_cache: nested dict containing tensors of shape [batch_size,
+      beam_width * 2, ...]
+  """</span>
+  <span class="k">pass</span>
+</code></pre></div></div>
+
+<p>As shown in the function signature of <code class="highlighter-rouge">grow_active_seqs</code>, the input arguments <code class="highlighter-rouge">active_seq</code> and <code class="highlighter-rouge">active_log_probs</code> maintain the status of active sequences. <code class="highlighter-rouge">active_cache</code> keeps track of the status of words that have been generated <em>earlier than</em> the “current word” (for example, the already computed key and value vectors of words that we pay attention to in the Transformer model, or the recurrent state vectors in RNN sequence model), which will be updated as well in this function. <code class="highlighter-rouge">get_next</code> is a callback function that computes the logits (equivalently the prob distribution) of next words, and will be executed within <code class="highlighter-rouge">grow_active_seqs</code>.</p>
+
+<h4 id="gather-top-active-sequences">Gather Top Active Sequences</h4>
+
+<p>Given the <code class="highlighter-rouge">beam_width * 2</code> candidates in which at least <code class="highlighter-rouge">beam_width</code> are active, it would be straightforward to pick &amp; gather top <code class="highlighter-rouge">beam_width</code> scoring active parital sequences.</p>
+
+<p align="center">
+  <img src="/assets/20190124/gather_top_active.png" width="800" />
+  <br /> Figure 9: Gather top active sequences. The active sequence with sum-of-log-prob -3.068 was NOT picked because it's not ranked among the top "beam_width". 
+</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">gather_top_active_seqs</span><span class="p">(</span>
+    <span class="n">updated_seq</span><span class="p">,</span> <span class="n">updated_log_probs</span><span class="p">,</span> <span class="n">updated_active_cache</span><span class="p">):</span>
+  <span class="s">"""Gather top scoring active sequences from the candidate pool.
+  Args:
+    updated_seq: tensor of shape [batch_size, beam_width * 2, 
+      partial_seq_len + 1]
+    updated_log_probs: tensor of shape [batch_size, beam_width * 2]
+    updated_active_cache: nested dict containing tensors of shape [batch_size,
+      beam_width * 2, ...]
+
+  Returns:
+    new_active_seq: tensor of shape [batch_size, beam_width,
+      partial_seq_len + 1]
+    new_log_probs: tensor of shape [batch_size, beam_width]
+    new_active_cache: nested dict containing tensors of shape [batch_size,
+      beam_width, ...]
+  """</span>
+  <span class="k">pass</span> 
+</code></pre></div></div>
+
+<h4 id="gather-top-finished-sequences">Gather Top Finished Sequences</h4>
+<p>Unlike the case for active sequences, it will be a little more complicated to update the <em>finished</em> sequences because not only do we need to pick <em>finished</em> sequences from the Candidate Pool, but also cross-check with those that are already finished in <em>previous</em> steps. We need to combine the new and the old and pick the top <code class="highlighter-rouge">beam_width</code> scoring finished sequences.</p>
+
+<p align="center">
+  <img src="/assets/20190124/gather_top_finished.png" width="800" />
+  <br /> Figure 10: Gather top finished sequences. The sequences finished in previous steps are colored in cyan. We combine those picked from the Candidate Pool with those that are previously finished, and pick the top scoring ones. Note that the previously finished sequences are shorter and will be zero-padded to match the length of those picked from the Candidate Pool. 
+</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">gather_top_finished_seqs</span><span class="p">(</span>
+    <span class="n">updated_seq</span><span class="p">,</span> <span class="n">updated_log_probs</span><span class="p">,</span> <span class="n">old_finished_seq</span><span class="p">,</span> <span class="n">old_finished_score</span><span class="p">):</span>
+  <span class="s">"""
+  Args:
+    updated_seq: tensor of shape [batch_size, beam_width * 2, 
+      partial_seq_len + 1]
+    updated_log_probs: tensor of shape [batch_size, beam_width * 2]
+    old_finished_seq: tensor of shape [batch_size, num_finished, 
+      partial_seq_len]
+    olf_finished_score: tensor of shape [batch_size, num_finished] 
+
+  Returns:
+    new_finished_seq: tensor of shape [batch_size, beam_width, 
+      partial_seq_len + 1]
+    new_finished_score: tensor of shape [batch_size, beam_width]
+  """</span>
+  <span class="k">pass</span>
+</code></pre></div></div>
+
+<h4 id="when-to-terminate-search">When to Terminate Search</h4>
+
+<p>We haven’t talked about when we should stop searching. Typically, we specify a hyperparameter <code class="highlighter-rouge">max_seq_len</code> that controls the maximum number of words a sequence can have. We terminate the growth of a sequence when the length reaches <code class="highlighter-rouge">max_seq_len</code>.</p>
+
+<p>Is there any other scenario where the searching should be terminated even before <code class="highlighter-rouge">max_seq_len</code> is reached? Remember that the sum-of-log-probs of active partial sequencs are always updated by adding a negative value (i.e. log-prob of the “next words”). So if the maximum sum-of-log-prob of active sequences is less than the minimum sum-of-log-prob of finished sequences (over all beams), the active sequences would <em>never</em> overtake finished ones in terms of the sum-of-log-prob scores, and we should stop searching as there will be no newly finished sequences.</p>
+
+<p align="center">
+  <img src="/assets/20190124/when_to_terminate.png" width="800" />
+  <br /> Figure 11: The scenario where we should stop updating the status of active and finished sequences.
+</p>
+
+<h4 id="implementation-in-python--tensorflow">Implementation in Python &amp; TensorFlow</h4>
+
+<p>A reference implementation is available <a href="https://github.com/chao-ji/nlp_toolkit/blob/master/beam_search.py">here</a>. You need to create an instance of <code class="highlighter-rouge">BeamSearch</code> where a callable <code class="highlighter-rouge">get_next</code> is supplied that computes the logits of next words (check the function signature listed below). Then call the instance method <code class="highlighter-rouge">search</code> that returns the finished sequenced found by Beam Search. For examples that performs Beam Search using this implementation, refer to <a href="https://github.com/chao-ji/tf-transformer">Transformer</a> and <a href="https://github.com/chao-ji/tf-seq2seq">Seq2Seq</a>.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">BeamSearch</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+               <span class="n">get_next</span><span class="p">,</span> 
+               <span class="n">vocab_size</span><span class="p">,</span>
+               <span class="n">batch_size</span><span class="p">,</span>
+               <span class="n">beam_width</span><span class="p">,</span>
+               <span class="n">alpha</span><span class="p">,</span>
+               <span class="n">max_decode_length</span><span class="p">,</span>
+               <span class="n">eos_id</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+  <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_ids</span><span class="p">,</span> <span class="n">initial_cache</span><span class="p">):</span>
+    <span class="s">"""Searches for sequences with greatest log-probs.
+
+    Args:
+      initial_ids: tensor of shape [batch_size] 
+      initial_cache: nested dict containing tensors of shape [batch_size,
+        beam_width, ...] 
+
+    Returns:
+      finished_seqs: tensor of shape [batch_size, beam_width, seq_len]
+      finished_scores: tensor of shape [batch_size, beam_width]
+    """</span>
+    <span class="k">pass</span>
+
+<span class="k">def</span> <span class="nf">get_next</span><span class="p">(</span><span class="n">inputs</span><span class="p">):</span>
+  <span class="s">"""Compute logits based on input word IDs.
+  Args:
+    inputs: tensor of shape [batch_size, 1]
+
+  Returns:
+    logits: tensor of shape [batch_size, vocab_size]
+  """</span>
+  <span class="n">decoder_inputs</span> <span class="o">=</span> <span class="n">get_embedding</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span> <span class="c1">#[batch_size, hidden_size]
+</span>  <span class="n">logits</span> <span class="o">=</span> <span class="n">compute_logits</span><span class="p">(</span><span class="n">decoder_inputs</span><span class="p">)</span> <span class="c1">#[batch_size, vocab_size]
+</span>  <span class="k">return</span> <span class="n">logits</span>
+</code></pre></div></div>
+
+
+  </div><a class="u-url" href="/jekyll/update/2019/01/24/Beam_Search.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">SuperComputer&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">SuperComputer&#39;s Blog</li><li><a class="u-email" href="mailto:ji.chao.stern@gmail.com">ji.chao.stern@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/chao-ji"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">chao-ji</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Dedicated to the clarity in explaining Machine Learning. </p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
