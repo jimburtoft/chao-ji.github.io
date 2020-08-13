@@ -54,10 +54,10 @@
 
 <p align="center">
   <img src="/assets/20190124/example.png" width="600" />
-  <br /> Figure 1. Generate sequence by repeatedly picking the next word.
+  <br /> Figure 1. Generate sequence by repeatedly picking the next word. 
 </p>
 
-<p>Roughly speaking, we are interested in finding a sequence that is most likely to be generated, quantified by the <em>probability score</em> of the sequence, or equivalently the sum of logarithm of probabilities (sum-of-log-probs) of its constituent words. Although it might be straightforward to let the function output whichever word with the largest probability throughout the entire process, it’s worth noting that the function has a unique property in that it takes in <em>its own</em> output at previous time steps to compute the current output, and as a result the prob distribution of next word may <em>change</em> depending on the choice we made in the past. As we will see shortly, this property has subtle implication on our word-picking strategy — picking words with lower probabilities, a seemingly non-optimal move, may eventually pay off as it unlocks access to choices that may lead to overall higher score of the entire sequence.</p>
+<p>Roughly speaking, we are interested in finding a sequence that is most likely to be generated, which is quantified by the <em>probability score</em> of the sequence, or equivalently the sum of logarithm of probabilities (sum-of-log-probs) of its constituent words. While it might be straightforward to let the function output whichever word with the largest probability throughout the entire process, it’s worth noting that the function has a unique property in that it takes in <em>its own</em> output at previous time steps to compute the current output, and as a result the prob distribution of next word may <em>vary</em> depending on the choice we made in the past. As we will see shortly, this property has subtle implication on our word-picking strategy — picking words with lower probabilities, a seemingly non-optimal move, may eventually pay off as it unlocks access to choices that may lead to overall higher score of the entire sequence.</p>
 
 <p align="center">
   <img src="/assets/20190124/greedy.png" width="300" /><img src="/assets/20190124/optimal.png" width="300" />
@@ -70,10 +70,10 @@
 
 <p align="center">
   <img src="/assets/20190124/exhaustive.png" width="500" />
-  <br /> Figure 3. Exhaustive Search expands the search tree unboundedly.
+  <br /> Figure 3. Exhaustive Search expands the search tree unboundedly. Each root-to-leaf path corresponds to a candidate sequence.
 </p>
 
-<p>Rather than let the search space grow unboundedly with the length of sequence, <a href="https://en.wikipedia.org/wiki/Beam_search">Beam Search</a> limits the total number of sequences that we are tracking to a constant <script type="math/tex">k</script> (a.k.a. <strong>beam width</strong>). Like exhaustive search, when we expand the current set of <script type="math/tex">k</script> candidate partial sequences (a.k.a. beams) of length <script type="math/tex">l</script>, we consider each of the <script type="math/tex">V</script> vocabulary words as the potential next word, leading to <script type="math/tex">kV</script> sequences of length <script type="math/tex">l + 1</script>. <em>Unlike</em> exhaustive search, we prune all but the top <script type="math/tex">k</script> most promising (with largest sum-of-log-probs) candidates, bringing the “candidate pool” back to the original size. However, the downside is that there is no guarantee Beam Search is going to find the same optimal solution as the exhaustive search, because the goal state leading to optimality may have been pruned halfway. In this sense, Beam Search is a <em>heuristic</em> searching algorithm.</p>
+<p>Rather than let the search space grow unboundedly with the length of sequence, <a href="https://en.wikipedia.org/wiki/Beam_search">Beam Search</a> limits the total number of sequences that we are tracking to a constant <script type="math/tex">k</script> (a.k.a. <strong>beam width</strong>). Like exhaustive search, when we expand the current set of <script type="math/tex">k</script> candidate partial sequences (a.k.a. beams) of length <script type="math/tex">l</script>, we consider each of the <script type="math/tex">V</script> vocabulary words as the potential next word, leading to <script type="math/tex">kV</script> sequences of length <script type="math/tex">l + 1</script>. <em>Unlike</em> exhaustive search, we prune all but the top <script type="math/tex">k</script> most promising (with largest sum-of-log-probs) candidates, bringing the “candidate pool” back to the original size. However, the downside is that there is no guarantee Beam Search is going to find the same optimal solution as the exhaustive search, because the goal state leading to optimality may have been pruned halfway. In this sense, Beam Search is a <em>heuristic</em> algorithm that sacrifices completeness for tractability.</p>
 
 <p align="center">
   <img src="/assets/20190124/beam width.png" width="500" />
@@ -185,7 +185,7 @@
 
 <p align="center">
   <img src="/assets/20190124/gather_top_finished.png" width="800" />
-  <br /> Figure 10: Gather top finished sequences. The sequences finished in previous steps are colored in cyan. We combine those picked from the Candidate Pool with those that are previously finished, and pick the top scoring ones. Note that the previously finished sequences are shorter and will be zero-padded to match the length of those picked from the Candidate Pool. 
+  <br /> Figure 10: Gather top finished sequences. The sequences finished in previous steps are colored in white. We combine those picked from the Candidate Pool with those that are previously finished, and pick the top scoring ones. Note that the previously finished sequences are shorter and will be zero-padded to match the length of those picked from the Candidate Pool. 
 </p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">gather_top_finished_seqs</span><span class="p">(</span>
@@ -220,7 +220,7 @@
 
 <h4 id="implementation-in-python--tensorflow">Implementation in Python &amp; TensorFlow</h4>
 
-<p>A reference implementation is available <a href="https://github.com/chao-ji/nlp_toolkit/blob/master/beam_search.py">here</a>. You need to create an instance of <code class="highlighter-rouge">BeamSearch</code> where a callable <code class="highlighter-rouge">get_next</code> is supplied that computes the logits of next words (check the function signature listed below). Then call the instance method <code class="highlighter-rouge">search</code> that returns the finished sequenced found by Beam Search. For examples that performs Beam Search using this implementation, refer to <a href="https://github.com/chao-ji/tf-transformer">Transformer</a> and <a href="https://github.com/chao-ji/tf-seq2seq">Seq2Seq</a>.</p>
+<p>A reference implementation is available <a href="https://github.com/chao-ji/nlp_toolkit/blob/master/beam_search.py">here</a>. You need to create an instance of <code class="highlighter-rouge">BeamSearch</code> where a callable <code class="highlighter-rouge">get_next</code> is supplied that computes the logits of next words (check the function signature listed below). Then call the instance method <code class="highlighter-rouge">search</code> that returns the finished sequences found by Beam Search. For examples that performs Beam Search using this implementation, refer to <a href="https://github.com/chao-ji/tf-transformer">Transformer</a> and <a href="https://github.com/chao-ji/tf-seq2seq">Seq2Seq</a>.</p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">BeamSearch</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
