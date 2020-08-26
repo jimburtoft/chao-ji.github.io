@@ -81,7 +81,7 @@
 </p>
 
 <h2 id="implementation">Implementation</h2>
-<p>So far we have briefly gone over the general ideas of Beam Search. In this part, we are going to get to the nuts and bolts of it that you should understand to implement it correctly.</p>
+<p>Now that we have some intuition about how Beam Search works in general, let’s get to the nuts and bolts of the algorithm that we need to understand to implement it correctly.</p>
 
 <h3 id="each-beam-maintains-its-own-set-of-states">Each beam maintains its own set of states</h3>
 <p>At this point you should already be convinced that we need to keep track of the status of <em>each beam</em> as we grow the partial sequences. We create ndarrays <code class="highlighter-rouge">active_seqs</code> and <code class="highlighter-rouge">active_log_probs</code> with shape <code class="highlighter-rouge">[batch_size, beam_width, partial_seq_len]</code> and <code class="highlighter-rouge">[batch_size, beam_width]</code>, respectively, where the slices into the beam dimension, <code class="highlighter-rouge">active_seqs[:, j]</code> and <code class="highlighter-rouge">active_log_probs[:, j]</code>, store the <em>status</em> of beam <code class="highlighter-rouge">j</code>, i.e. the list of word IDs making that partial sequence and the corresponding sum-of-log-prob.</p>
